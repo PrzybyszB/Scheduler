@@ -1,0 +1,34 @@
+version: '3.3'
+
+services:
+  scheduler_db:
+    image: postgres
+    container_name: postgres
+    environment:
+      - POSTGRES_DB=scheduler_db
+      - POSTGRES_USER=scheduler_user
+      - POSTGRES_PASSWORD=scheduler_password
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-scheduler-volume:/var/lib/postgresql/data
+
+# Zamiast podpinać folder (bind volume) pobaw się z named volumes
+# https://docs.docker.com/storage/volumes/#use-a-volume-with-docker-compose
+
+  scheduler:
+    image: scheduler
+    container_name: webapp
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: bash -c "python3 manage.py makemigrations && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
+    volumes:
+     - .:/code
+    ports:
+      - 8000:8000
+    depends_on:
+      - scheduler_db
+
+volumes:
+  postgres-scheduler-volume:

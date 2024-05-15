@@ -1,0 +1,11 @@
+Django
+djangorestframework
+django-cors-headers
+# djangorestframework-simplejwt
+
+
+# for postgres and django
+psycopg2
+
+# ImageField
+Pillow
