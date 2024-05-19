@@ -9,7 +9,6 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.PROTECT)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    password = models.CharField(max_length=100)
     email = models.CharField(max_length=50)
     address = models.CharField(max_length=50)
     address2 = models.CharField(max_length=200, blank=True)
@@ -26,7 +25,6 @@ class Profile(models.Model):
 class Customer(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    password = models.CharField(max_length=100)
     email = models.CharField(max_length=50)
     address = models.CharField(max_length=50)
     address2 = models.CharField(max_length=200, blank=True)
@@ -51,7 +49,7 @@ class Premium(models.Model):
     def __str__(self):
         return self.name
 
-# Create a premium Variables
+# Create an Order model
 class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
