@@ -1,11 +1,20 @@
 Django
 djangorestframework
 django-cors-headers
-# djangorestframework-simplejwt
+djangorestframework-simplejwt
+PyJWT
+pytz
+sqlparse
 
+
+# For testing
+coverage
 
 # for postgres and django
 psycopg2
 
 # ImageField
 Pillow
+
+# For caching
+django-redis

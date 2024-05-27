@@ -18,8 +18,19 @@ from django.contrib import admin
 from django.urls import path, include
 from . import settings
 from django.conf.urls.static import static
+# from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from api.views import home
+from api import urls as api_urls
+
+
 
 urlpatterns = [
+    path('', home, name='home'),
     path('admin/', admin.site.urls),
-    path('', include('api.urls')),  # Domyślny routing do API
+    path('api/', include((api_urls, 'api'), namespace='api')),
+    path('api/cart/', include('cart.urls')),
+    # path("api/token", TokenObtainPairView.as_view(), name="get_token"),
+    # path("api/token/refresh", TokenRefreshView.as_view(), name="refresh"),
+    path('api-auth/', include('rest_framework.urls')), 
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
