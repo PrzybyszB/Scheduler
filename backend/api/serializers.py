@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Profile, Customer, Premium, PublicTransportType, Stop, Order
+from .models import Profile, Customer, Premium, Stop, Order
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -41,11 +41,6 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ["id", "user", "created_at", "premium", "customer", "address", "phone", "date", "status"]
-
-class PublicTransportTypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PublicTransportType
-        fields = ["id", "number", "is_delete"]
 
 class StopSerializer(serializers.ModelSerializer):
     class Meta:

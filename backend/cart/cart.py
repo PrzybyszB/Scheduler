@@ -3,14 +3,17 @@ from django.conf import settings
 from django.contrib.sessions.models import Session
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from .models import Cart, CartItem
+from .models import CartModel, CartItem
 from api.models import Premium, Profile
 import redis
 
-redis_instance = redis.StrictRedis(host='localhost', port=6379, db=0)
+redis_instance = redis.StrictRedis(host='redis', port=6379, db=0)
 
 
-class Koszyk:
+
+'''
+# CHAT GPT PROPOZYCJA REDIS
+class CartClass:
     def __init__(self, request):
         self.request = request
         self.session = request.session
@@ -20,7 +23,7 @@ class Koszyk:
         if not self.cart_id:
             self.cart_id = self._create_cart()
 
-    def _create_cart(self):
+    def create_cart(self):
         cart_id = self.redis_instance.incr('cart_id_generator')
         self.session['cart_id'] = cart_id
         self.session.modified = True
@@ -39,7 +42,7 @@ class Koszyk:
         redis_instance.hset(cart_key, premium_id, json.dumps(cart_data))
 
         # Synchronizacja danych z modelem Cart w bazie danych PostgreSQL
-        cart, _ = Cart.objects.get_or_create(user=user)
+        cart, _ = CartModel.objects.get_or_create(user=user)
         premium = get_object_or_404(Premium, pk=premium_id)
         cart_item, created = CartItem.objects.get_or_create(cart=cart, premium=premium)
         if not created:
@@ -64,7 +67,7 @@ class Koszyk:
         cart_key = f"cart:{user.id}"
         cart_data = redis_instance.hgetall(cart_key)
         if cart_data:
-            cart, _ = Cart.objects.get_or_create(user=user)
+            cart, _ = CartModel.objects.get_or_create(user=user)
             for premium_id, data in cart_data.items():
                 data = json.loads(data)
                 premium = get_object_or_404(Premium, pk=premium_id)
@@ -75,8 +78,7 @@ class Koszyk:
 
 
 
-
-
+'''
 
 
 

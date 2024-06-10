@@ -1,6 +1,8 @@
 import datetime
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator
+
 
 # Create your models here.
 
@@ -63,14 +65,101 @@ class Order(models.Model):
     date = models.DateField(default=datetime.datetime.today)
     ordered = models.BooleanField(default=False)
 
-# Create Tramway
-class PublicTransportType(models.Model):
-    number = models.CharField(max_length=50)
-    is_delete = models.BooleanField(default=False)
 
-# Create a stops
+# GTFS db.models
+
+class Agency(models.Model):
+    agency_id = models.CharField(max_length=255, primary_key=True)
+    agency_name = models.CharField(max_length=255)
+    agency_url = models.URLField()
+    agency_timezone = models.CharField(max_length=255)
+    agency_lang = models.CharField(max_length=2, blank=True, null=True)
+    agency_phone = models.CharField(max_length=20, blank=True, null=True)
+
+    def __str__(self):
+        return self.agency_name
+
 class Stop(models.Model):
-    name = models.CharField(max_length=50)
-    tramway_stops = models.ForeignKey(PublicTransportType, related_name='tramway_stop_set', on_delete=models.CASCADE)
-    bus_stops = models.ForeignKey(PublicTransportType, related_name='bus_stop_set', on_delete=models.CASCADE)
-    is_delete = models.BooleanField(default=False)
+    stop_id = models.CharField(max_length=255, primary_key=True, default='default_stop_id')
+    stop_code = models.CharField(max_length=255, blank=True, null=True)
+    stop_name = models.CharField(max_length=255, blank=True, null=True)
+    stop_lat = models.FloatField(blank=True, null=True)
+    stop_lon = models.FloatField(blank=True, null=True)
+    zone_id = models.CharField(max_length=1)
+
+    def __str__(self):
+        return self.stop_name
+
+class Route(models.Model):
+    route_id = models.CharField(max_length=10, primary_key=True)
+    agency_id = models.ForeignKey(Agency, on_delete=models.CASCADE)
+    route_short_name = models.CharField(max_length=10)
+    route_long_name = models.CharField(max_length=255)
+    route_desc = models.CharField(max_length=9999)
+    route_type = models.IntegerField()
+    route_color = models.CharField(max_length=6, blank=True, null=True)
+    route_text_color = models.CharField(max_length=6, blank=True, null=True)
+
+    def __str__(self):
+        return self.route_short_name
+
+class Calendar(models.Model):
+    service_id = models.CharField(max_length=255, primary_key=True)
+    monday = models.BooleanField()
+    tuesday = models.BooleanField()
+    wednesday = models.BooleanField()
+    thursday = models.BooleanField()
+    friday = models.BooleanField()
+    saturday = models.BooleanField()
+    sunday = models.BooleanField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    def __str__(self):
+        return self.service_id
+
+class Shape(models.Model):
+    shape_id = models.CharField(max_length=255)
+    shape_pt_lat = models.FloatField()
+    shape_pt_lon = models.FloatField()
+    shape_pt_sequence = models.IntegerField()
+
+    def __str__(self):
+        return self.shape_id
+
+class Trip(models.Model):
+    route_id = models.ForeignKey(Route, on_delete=models.CASCADE)
+    service_id = models.ForeignKey(Calendar, on_delete=models.CASCADE)
+    trip_id = models.CharField(max_length=255, primary_key=True)
+    trip_headsign = models.CharField(max_length=255, blank=True, null=True)
+    direction_id = models.IntegerField(blank=True, null=True)
+    shape_id = models.ForeignKey(Shape, on_delete=models.CASCADE)
+    wheelchair_accessible = models.IntegerField()
+    brigade = models.IntegerField()
+    
+    def __str__(self):
+        return self.trip_id
+    
+class StopTime(models.Model):
+    trip_id = models.ForeignKey(Trip, on_delete=models.CASCADE)
+    arrival_time = models.TimeField()
+    departure_time = models.TimeField()
+    stop_id = models.ForeignKey(Stop, on_delete=models.CASCADE)
+    stop_sequence = models.IntegerField(validators=[MinValueValidator(0)])
+    stop_headsign = models.CharField(max_length=255, blank=True, null=True)
+    pickup_type = models.IntegerField(blank=True, null=True)
+    drop_off_type = models.IntegerField(blank=True, null=True)
+
+    def __str__(self):
+        return self.stop_id
+
+class FeedInfo(models.Model):
+    feed_publisher_name = models.CharField(max_length=255)
+    feed_publisher_url = models.URLField()
+    feed_lang = models.CharField(max_length=10)
+    feed_start_date = models.DateField()
+    feed_end_date = models.DateField()
+
+    def __str__(self):
+        return self.feed_publisher_name
+

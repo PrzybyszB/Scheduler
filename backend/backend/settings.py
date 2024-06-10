@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'cart',
     'rest_framework',
     'corsheaders',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -164,9 +165,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+'''
 CACHES = {
     'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': 'redis://redis:6379/1',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
@@ -175,4 +177,9 @@ CACHES = {
 }
 
 # Cache timeout for cart
-CART_CACHE_TIMEOUT = 60 * 60 * 24  # 1 day in seco
+CART_CACHE_TIMEOUT = 60 * 60 * 24  # 1 day in seconds
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = 'default'
+
+'''

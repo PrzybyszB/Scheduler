@@ -32,6 +32,7 @@ class APIRoot(APIView):
             'premium create': '/api/premium/create',
             'premium delete': '/api/premium/delete/<int:pk>',
             'premium list': '/api/premium/list',
+            'cart': '/api/cart/',
 
             # Add next endpoints
         })

@@ -5,8 +5,8 @@ djangorestframework-simplejwt
 PyJWT
 pytz
 sqlparse
-
-
+pandas
+django-extensions
 # For testing
 coverage
 
@@ -18,3 +18,8 @@ Pillow
 
 # For caching
 django-redis
+
+
+# For gtfs
+gtfs-realtime-bindings
+
