@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.contrib.auth.models import User
-from .models import Profile, Premium
+from .models import Profile, Premium, Route
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 # from rest_framework.permissions import IsAuthenticated, AllowAny
-from .serializers import ProfileSerializer, UserSerializer, PremiumSerializer
+from .serializers import ProfileSerializer, UserSerializer, PremiumSerializer, RouteSerializer
 
 #TODO do byka czemu nie działa (wykuriwa bład NoReverseMatch at /api/) a wszystko pasuje
 
@@ -54,7 +54,6 @@ class UserProfileDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProfileSerializer
     # permission_classes = [AllowAny]
 
-
 class UserDetail(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -95,8 +94,11 @@ class PremiumList(generics.ListAPIView):
     # permission_classes = [AllowAny]
 
 
-
-
+@api_view(['GET'])
+def api_test_16(request):
+    route_16 = Route.objects.get(route_id = 16)
+    serializer_class = RouteSerializer(route_16)
+    return Response(serializer_class.data)
 
 
 # @api_view(['GET'])

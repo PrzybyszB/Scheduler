@@ -112,8 +112,8 @@ class Calendar(models.Model):
     friday = models.BooleanField()
     saturday = models.BooleanField()
     sunday = models.BooleanField()
-    start_date = models.DateField()
-    end_date = models.DateField()
+    start_date = models.DateField(default=20240610)
+    end_date = models.DateField(default = 20240616)
 
     def __str__(self):
         return self.service_id

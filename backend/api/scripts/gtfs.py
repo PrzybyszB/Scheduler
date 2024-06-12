@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from datetime import datetime
 from django.db import transaction
 from api.models import Agency, Stop, Route, Trip, StopTime, Shape, FeedInfo, Calendar
 
@@ -68,6 +69,7 @@ def load_trips():
     for index, row in df.iterrows():
         service = Calendar.objects.get(service_id =row['service_id'])
         route = Route.objects.get(route_id=row['route_id'])
+        shape = Shape.objects.get(shape_id=row['shape_id'])
         Trip.objects.create(
             trip_id=row['trip_id'],
             route_id=route,
@@ -76,7 +78,7 @@ def load_trips():
             wheelchair_accessible=row.get('wheelchair_accessible'),
             direction_id=row.get('direction_id'),
             brigade=row.get('brigade'),
-            shape_id=row.get('shape_id')
+            shape_id=shape
         )
 
 @transaction.atomic
@@ -116,15 +118,16 @@ def load_feed_info():
     FeedInfo.objects.all().delete()
 
     df = pd.read_csv(os.path.join(GTFS_DIR, 'feed_info.txt'))
+    df['feed_start_date'] = df['feed_start_date'].astype(str)
+    df['feed_end_date'] = df['feed_end_date'].astype(str)
     for index, row in df.iterrows():
         FeedInfo.objects.create(
             feed_publisher_name=row['feed_publisher_name'],
             feed_publisher_url=row['feed_publisher_url'],
             feed_lang=row['feed_lang'],
-            feed_start_date=row['feed_start_date'],
-            feed_end_date=row['feed_end_date'],
+            feed_start_date=datetime.strptime(row['feed_start_date'], '%Y%m%d').strftime('%Y-%m-%d'),
+            feed_end_date=datetime.strptime(row['feed_end_date'], '%Y%m%d').strftime('%Y-%m-%d'),
         )
-
 @transaction.atomic
 def load_calendar():
     Calendar.objects.all().delete()
@@ -150,7 +153,7 @@ load_agency()
 load_stops()
 load_routes()
 load_calendar()
+load_feed_info()
+load_shapes()
 load_trips()
 load_stop_times()
-load_shapes()
-load_feed_info()
