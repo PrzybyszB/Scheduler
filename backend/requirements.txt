@@ -7,6 +7,7 @@ pytz
 sqlparse
 pandas
 django-extensions
+requests
 # For testing
 coverage
 
@@ -22,4 +23,8 @@ django-redis
 
 # For gtfs
 gtfs-realtime-bindings
+
+
+
+
 

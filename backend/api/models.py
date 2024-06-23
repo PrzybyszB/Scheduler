@@ -119,7 +119,7 @@ class Calendar(models.Model):
         return self.service_id
 
 class Shape(models.Model):
-    shape_id = models.CharField(max_length=255)
+    shape_id = models.IntegerField()
     shape_pt_lat = models.FloatField()
     shape_pt_lon = models.FloatField()
     shape_pt_sequence = models.IntegerField()

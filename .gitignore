@@ -1,6 +1,9 @@
 # My stuff
 my_notes.py
 GTFS-ZTM/
+*.zip
+migracjexd/
+
 
 # Scripts
 run.sh
