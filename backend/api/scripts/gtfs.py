@@ -8,6 +8,10 @@ import zipfile
 import io
 import shutil
 
+
+# GTFS-ZTM directory is for GTFS files
+
+
 # Setting the environment variable DJANGO_SETTINGS_MODULE
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 

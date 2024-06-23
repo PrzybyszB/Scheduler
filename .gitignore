@@ -1,8 +1,18 @@
 # My stuff
 my_notes.py
-GTFS-ZTM/
 *.zip
 migracjexd/
+calendar.txt
+calendar.dates.txt
+agency.txt
+feed_info.txt
+routes.txt
+shapes.txt
+stop_times.txt
+stops.txt
+trips.txt
+
+
 
 
 # Scripts
