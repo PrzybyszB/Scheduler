@@ -118,28 +118,46 @@ class Calendar(models.Model):
     def __str__(self):
         return self.service_id
 
+class ShapeId(models.Model):
+    shape_id = models.CharField(primary_key=True)
+    shape_pt_lat = models.FloatField(null= True, blank=True)
+    shape_pt_lon = models.FloatField(null= True, blank=True)
+    shape_pt_sequence = models.IntegerField(null= True, blank=True)
+    
+    class Meta:
+        ordering = ['shape_id']
+
+    def __str__(self):
+        return str(self.shape_id)
+
+
 class Shape(models.Model):
-    shape_id = models.IntegerField()
+    shape_id = models.ForeignKey(ShapeId, related_name='shapes', on_delete=models.CASCADE)
     shape_pt_lat = models.FloatField()
     shape_pt_lon = models.FloatField()
     shape_pt_sequence = models.IntegerField()
 
+    class Meta:
+        ordering = ['shape_id','shape_pt_sequence' ]
+
     def __str__(self):
-        return self.shape_id
+        return f"{self.shape_id} - Sequence {self.shape_pt_sequence}"
 
 class Trip(models.Model):
-    route_id = models.ForeignKey(Route, on_delete=models.CASCADE)
-    service_id = models.ForeignKey(Calendar, on_delete=models.CASCADE)
+    route = models.ForeignKey(Route, on_delete=models.CASCADE)
+    service = models.ForeignKey(Calendar, on_delete=models.CASCADE)
+    shape = models.ForeignKey(Shape, on_delete=models.CASCADE)
     trip_id = models.CharField(max_length=255, primary_key=True)
     trip_headsign = models.CharField(max_length=255, blank=True, null=True)
     direction_id = models.IntegerField(blank=True, null=True)
-    shape_id = models.ForeignKey(Shape, on_delete=models.CASCADE)
     wheelchair_accessible = models.IntegerField()
     brigade = models.IntegerField()
     
     def __str__(self):
         return self.trip_id
     
+
+
 class StopTime(models.Model):
     trip_id = models.ForeignKey(Trip, on_delete=models.CASCADE)
     arrival_time = models.TimeField()
@@ -162,4 +180,3 @@ class FeedInfo(models.Model):
 
     def __str__(self):
         return self.feed_publisher_name
-

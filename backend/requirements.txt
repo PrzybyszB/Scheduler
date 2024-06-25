@@ -8,6 +8,7 @@ sqlparse
 pandas
 django-extensions
 requests
+
 # For testing
 coverage
 

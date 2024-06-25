@@ -3,7 +3,7 @@ my_notes.py
 *.zip
 migracjexd/
 calendar.txt
-calendar.dates.txt
+calendar_dates.txt
 agency.txt
 feed_info.txt
 routes.txt

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Profile, Customer, Premium, Stop, Order, Agency, Route, Calendar, Shape, Trip, StopTime, FeedInfo
+from .models import Profile, Customer, Premium, Stop, Order, Agency, Route, Calendar, Shape, Trip, StopTime, FeedInfo, ShapeId
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -82,6 +82,10 @@ class FeedInfoSerializer(serializers.ModelSerializer):
         model = FeedInfo
         fields = ["feed_publisher_name","feed_publisher_url","feed_lang","feed_start_date","feed_end_date",]
 
+class ShapeIdSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShapeId
+        Fields = ["shapeidcreator_id", "shape_id", 'trip_id']
 
 
 
