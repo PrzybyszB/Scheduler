@@ -1,30 +1,30 @@
 import os
-import pandas as pd
-from datetime import datetime
-from django.db import transaction
-from api.models import Agency, Stop, Route, Trip, StopTime, Shape, FeedInfo, Calendar, ShapeId
-import requests
-import zipfile
-import io
-import shutil
-import csv
-import logging
-
-# GTFS-ZTM directory is for GTFS files
-
 
 # Setting the environment variable DJANGO_SETTINGS_MODULE
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
 # Django environment configuration
 import django
+import pandas as pd
+import csv
+import logging
+import requests
+import json
+import requests
+import zipfile
+import io
+from datetime import datetime
+from django.db import transaction
+from api.models import Agency, Stop, Route, Trip, StopTime, Shape, FeedInfo, Calendar, ShapeId
+
+
 django.setup()
 
 # URL to the GTFS files
-GTFS_URL = 'https://www.ztm.poznan.pl/pl/dla-deweloperow/getGTFSFile/?file=20240621_20240621.zip'
+GTFS_URL = "https://www.ztm.poznan.pl/pl/dla-deweloperow/getGTFSFile"
 
 # Path to the directory containing GTFS files
-GTFS_DIR = 'api/scripts/GTFS-ZTM/'
+GTFS_DIR = 'api/GTFS-ZTM/GTFS-ZTM-STATIC'
 
 # Function to download and extract GTFS files
 def download_and_extract_gtfs(url, extract_to):
@@ -60,7 +60,7 @@ def convert_time_format(time_str):
 #             shutil.rmtree(file_path)
 
 # Download and extract GTFS files
-# download_and_extract_gtfs(GTFS_URL, GTFS_DIR)
+download_and_extract_gtfs(GTFS_URL, GTFS_DIR)
 
 @transaction.atomic
 def load_agency():

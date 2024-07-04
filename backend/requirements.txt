@@ -8,6 +8,7 @@ sqlparse
 pandas
 django-extensions
 requests
+django_enumfield
 
 # For testing
 coverage

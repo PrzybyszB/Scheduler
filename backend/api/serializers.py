@@ -88,5 +88,3 @@ class ShapeIdSerializer(serializers.ModelSerializer):
         Fields = ["shapeidcreator_id", "shape_id", 'trip_id']
 
 
-
-

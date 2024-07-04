@@ -91,7 +91,7 @@ class Stop(models.Model):
         return self.stop_name
 
 class Route(models.Model):
-    route_id = models.CharField(max_length=10, primary_key=True)
+    route_id = models.CharField(max_length=1000, primary_key=True)
     agency_id = models.ForeignKey(Agency, on_delete=models.CASCADE)
     route_short_name = models.CharField(max_length=10)
     route_long_name = models.CharField(max_length=255)
@@ -130,7 +130,6 @@ class ShapeId(models.Model):
     def __str__(self):
         return str(self.shape_id)
 
-
 class Shape(models.Model):
     shape_id = models.ForeignKey(ShapeId, related_name='shapes', on_delete=models.CASCADE)
     shape_pt_lat = models.FloatField()
@@ -153,11 +152,10 @@ class Trip(models.Model):
     wheelchair_accessible = models.IntegerField()
     brigade = models.IntegerField()
     
+
     def __str__(self):
         return self.trip_id
     
-
-
 class StopTime(models.Model):
     trip_id = models.ForeignKey(Trip, on_delete=models.CASCADE)
     arrival_time = models.TimeField()
@@ -180,3 +178,6 @@ class FeedInfo(models.Model):
 
     def __str__(self):
         return self.feed_publisher_name
+
+
+

@@ -11,8 +11,15 @@ shapes.txt
 stop_times.txt
 stops.txt
 trips.txt
-
-
+gtfs_rt_data.json
+feeds.json
+feeds.pb
+trip_update.json
+trip_update.pb
+vehicle_dictionary.csv
+vehicle_positions.pb
+vehicle_positions.json
+zadania.py
 
 
 # Scripts
