@@ -19,7 +19,7 @@ from django.urls import path, include
 from . import settings
 from django.conf.urls.static import static
 # from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from api.views import home, api_test_16, api_test_RT_trip_updates
+from api.views import home, api_test_16, api_test_RT, api_test_16_rt
 from api import urls as api_urls
 
 
@@ -27,7 +27,8 @@ from api import urls as api_urls
 urlpatterns = [
     path('', home, name='home'),
     path('16', api_test_16, name='api_test_16'),
-    path('RT', api_test_RT_trip_updates, name='api_test_RT'),
+    path('16/RT', api_test_16_rt, name='api_test_16_rt'),
+    path('RT', api_test_RT, name='api_test_RT'),
     path('admin/', admin.site.urls),
     path('api/', include((api_urls, 'api'), namespace='api')),
     path('api/cart/', include('cart.urls')),

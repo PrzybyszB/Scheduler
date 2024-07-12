@@ -8,7 +8,7 @@ sqlparse
 pandas
 django-extensions
 requests
-django_enumfield
+
 
 # For testing
 coverage
@@ -19,9 +19,13 @@ psycopg2
 # ImageField
 Pillow
 
-# For caching
+# For caching/broker
+redis
 django-redis
 
+# Tasks
+celery
+django_celery_beat
 
 # For gtfs
 gtfs-realtime-bindings

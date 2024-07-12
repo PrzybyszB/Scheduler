@@ -13,31 +13,42 @@ services:
     volumes:
       - postgres-scheduler-volume:/var/lib/postgresql/data
 
-# Zamiast podpinać folder (bind volume) pobaw się z named volumes
-# https://docs.docker.com/storage/volumes/#use-a-volume-with-docker-compose
-
   scheduler:
     image: scheduler
     container_name: webapp
     build:
       context: .
       dockerfile: Dockerfile
-    # command: bash -c "python3 manage.py makemigrations &&  python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
-    # command: bash -c "python3 manage.py makemigrations &&  python3 manage.py migrate && python3 manage.py runscript gtfs && python3 manage.py runserver 0.0.0.0:8000"
     command: bash -c "./run.sh"
     volumes:
-     - .:/code
+      - .:/code
     ports:
       - 8000:8000
     depends_on:
       - scheduler_db
-      # - redis
+      - redis
+      - celery
 
-  # redis:
-  #   image: redis:latest
-  #   container_name: redis
-  #   ports:
-  #     - 6379:6379
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - 6379:6379
+    command: redis-server --bind 0.0.0.0
+
+  celery:
+    image: scheduler
+    container_name: celery
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: bash -c "celery -A backend worker --loglevel=info & celery -A backend beat --loglevel=info"
+    volumes:
+      - .:/code
+    depends_on:
+      - scheduler_db
+      - redis
+
 
 volumes:
   postgres-scheduler-volume:
