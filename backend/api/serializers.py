@@ -22,6 +22,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ["id","username", "first_name", "last_name", "email", "address", "address2", "phone", "is_delete"]
+        extra_kwargs = {"id": {"read_only": True}}
     
     # Username retrieval method, then we can call username in fields
     def get_username(self, obj): 

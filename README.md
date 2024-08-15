@@ -36,13 +36,28 @@ This application provides a scheduler and route planner for public transport (MP
 - React (for frontend development)
 - HTML/CSS/JavaScript (for basic frontend styling and functionality)
 
-## Setup Instructions
-1. Clone the repository.
-2. Install dependencies using `pip install -r requirements.txt`.
-3. Set up PostgreSQL and configure Django settings accordingly.
-4. Configure Celery with Redis for async task management.
-5. Set up the React frontend (details TBD).
-6. Run the Django development server and start the React frontend development server.
+## Installation
+
+1. Clone the repository to your local machine:
+
+    ```
+    git clone <repository_url>
+    ```
+
+2. Navigate to the project directory:
+
+    ```
+    cd Scheduler
+    ```
+
+3. Run the application using Docker Compose:
+
+    ```
+    docker-compose up --build
+    ```
+
+5. Frontend will be on Nginx, actually work in progress (learning about frontend)
+
 
 ## Contributors
 - Bartosz Przybysz https://github.com/PrzybyszB

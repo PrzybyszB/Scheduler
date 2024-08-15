@@ -1,7 +1,7 @@
-from django.urls import path, include
-#from .views import api_user_list
+from django.urls import path
 from rest_framework import routers
-from .views import APIRoot, CreateUser, UserProfileList, UserProfileDetail, UserDetail, UserList, PremiumCreate, PremiumDestroy, PremiumList
+from .views import APIRoot, CreateUser, UserProfileList, UserProfileDetail, UserDetail, UserList, PremiumCreate, PremiumDelete, PremiumList
+
 
 app_name = "api"
 
@@ -14,7 +14,8 @@ urlpatterns = [
     path('profile/<int:pk>/', UserProfileDetail.as_view(), name='profile-detail'),
     path('user/<int:pk>/', UserDetail.as_view(), name='user-detail'),
     path('premium/create/', PremiumCreate.as_view(), name='product-create'),
-    path('premium/destroy/<int:pk>', PremiumDestroy.as_view(), name='product-destroy'),
+    path('premium/delete/<int:pk>', PremiumDelete.as_view(), name='product-destroy'),
     path('premium/list/', PremiumList.as_view(), name='premium-list'),
+
 
 ]

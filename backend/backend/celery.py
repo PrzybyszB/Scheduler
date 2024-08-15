@@ -20,17 +20,17 @@ app.conf.broker_connection_retry_on_startup = True
 app.conf.beat_schedule = {
     'check_file_URL_RT_1': {
         'task': 'api.tasks.check_file',
-        'schedule': 20.0,  # every 20 sec
+        'schedule': 50000.0,  # every 50000 sec
         'args': (URL_RT_1, 'trip_updates'),
     },
     'check_file_URL_RT_2': {
         'task': 'api.tasks.check_file',
-        'schedule': 20.0,  # every 20 sec
+        'schedule': 50000.0,  # every 50000 sec
         'args': (URL_RT_2, 'feeds'),
     },
     'check_file_URL_RT_3': {
         'task': 'api.tasks.check_file',
-        'schedule': 20.0,  # every 20 sec
+        'schedule': 50000.0,  # every 50000 sec
         'args': (URL_RT_3, 'vehicle_positions'),
     },
 }

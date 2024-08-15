@@ -1,6 +1,8 @@
 import requests
 import redis
 import json
+from google.protobuf.message import DecodeError
+from redis.exceptions import RedisError
 from google.transit import gtfs_realtime_pb2
 from google.protobuf.json_format import MessageToJson
 from celery import Celery
@@ -19,6 +21,8 @@ URL_RT_3 = 'https://www.ztm.poznan.pl/pl/dla-deweloperow/getGtfsRtFile?file=vehi
 
 @shared_task
 def check_file(url, key):
+        
+    try:
         response = requests.get(url)
         
         # Parsing new file from url
@@ -27,6 +31,10 @@ def check_file(url, key):
         if feed.HasField('header'):
             header = feed.header
             new_file_timestamp = header.timestamp
+        else:
+            print("There is no header in new file")
+            return
+        
         print(f"New file timestamp for {key}: {new_file_timestamp}")
 
         # Looking for file in Redis db
@@ -46,26 +54,61 @@ def check_file(url, key):
              fetch_and_convert_pb_to_json(url, key)
         else:
             print(f"File {key} is up to date")
+    
+    except requests.exceptions.RequestException as e:
+        print(f"Error while downloading file from URL: {e}")
+    
+    except DecodeError as e:
+        print(f"Error while parsing file: {e}")
+    
+    except RedisError as e:
+        print(f"Error while work with Redis: {e}")
+    
+    except json.JSONDecodeError as e:
+        print(f"Error while parsing JSON: {e}")
+    
+    except KeyError as e:
+        print(f"Key error while accessing JSON data: {e}")
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
 
 @shared_task
 def fetch_and_convert_pb_to_json(url, key):
-    response = requests.get(url)
-    response.raise_for_status()
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
 
-    # Create feed message object
-    feed = gtfs_realtime_pb2.FeedMessage()
-    
-    # Parsing HTTP response content into object FeedMessage
-    feed.ParseFromString(response.content)
-    
-    # Convert protobuf object into JSON format(but its string)
-    json_data_format = MessageToJson(feed)
+        # Create feed message object
+        feed = gtfs_realtime_pb2.FeedMessage()
+        
+        # Parsing HTTP response content into object FeedMessage
+        feed.ParseFromString(response.content)
+        
+        # Convert protobuf object into JSON format(but its string)
+        json_data_format = MessageToJson(feed)
 
-    # Saving file into Redis with unique key
-    client.set(key, json_data_format)
-    print(f"File: {key} downloaded")
+        # Saving file into Redis with unique key and setting time to live 
+        ttl_in_seconds = 48 * 3600
+        client.setex(key, ttl_in_seconds, json_data_format)
+        
+        print(f"File: {key} downloaded with TTL of {ttl_in_seconds} seconds")
+        
+        return json_data_format
     
-    return json_data_format
+    
+    except requests.exceptions.RequestException as e:
+            print(f"Error while downloading file from URL: {e}")
+    
+    except DecodeError as e:
+            print(f"Error while parsing file: {e}")
+    
+    except RedisError as e:
+            print(f"Error while work with Redis: {e}")
+    
+    except Exception as e:
+            print(f"Unexpected error: {e}")
 
 # Check file
 # trip_updates_data_check = check_file(URL_RT_1, 'trip_updates')
@@ -81,11 +124,3 @@ def fetch_and_convert_pb_to_json(url, key):
 # trip_updates_json = json.loads(trip_updates_data)
 # feeds_json = json.loads(feeds_data)
 # vehicle_positions_json = json.loads(vehicle_positions_data)
-
-'''
-List of expect
-
-requests.exceptions.ChunkedEncodingError: ('Connection broken: IncompleteRead(26627 bytes read, 64 more expected)', IncompleteRead(26627 bytes read, 64 more expected))
-
-'''
-

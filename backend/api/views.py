@@ -40,39 +40,39 @@ class CreateUser(generics.CreateAPIView):
 class UserProfileList(generics.ListAPIView):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
-    # permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]
 
 class UserProfileDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
-    # permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]
 
 class UserDetail(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    # permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]
 
 class UserList(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    # permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]
 
 class PremiumCreate(generics.CreateAPIView):
     queryset = Premium.objects.all()
     serializer_class = PremiumSerializer
-    # permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]
 
-class PremiumDestroy(generics.RetrieveDestroyAPIView):
+class PremiumDelete(generics.RetrieveDestroyAPIView):
     queryset = Premium.objects.all()
     serializer_class = PremiumSerializer
-    # permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]
 
     def delete(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
+        premium = self.get_object()
+        serializer = self.get_serializer(premium)
         premium_data = serializer.data
-        premium_id = instance.id
-        self.perform_destroy(instance)
+        premium_id = premium.id
+        self.perform_destroy(premium)
         return Response(
             {
                 "message": f"Premium with ID {premium_id} was deleted",
@@ -109,27 +109,32 @@ def api_test_16_rt(request):
     feeds_json = json.loads(feeds_data)
     vehicle_positions_json = json.loads(vehicle_positions_data)
 
+    positions = []
+
+
     for entity_vehicle in vehicle_positions_json['entity']:
         vehicle = entity_vehicle['vehicle']
         trip = vehicle['trip']
         route_id = trip['routeId']
-        position = vehicle['position']
         
         if route_id == "16":
-            for entity_trip in trip_update_json['entity']:
-                trip_update = entity_trip['tripUpdate']
-                trip = trip_update['trip']
-                trip_route_id = trip['routeId']
+            position = vehicle['position']
+            positions.append(position)
+            
+            # for entity_trip in trip_update_json['entity']:
+            #     trip_update = entity_trip['tripUpdate']
+            #     trip = trip_update['trip']
+            #     trip_route_id = trip['routeId']
                 
-                if trip_route_id == "16":
-                    stopTimeUpdate = trip_update['stopTimeUpdate']
-                    for stop_update in stopTimeUpdate:
-                        arrival = stop_update['arrival']
-                        delay = arrival['delay']
-                        if entity_vehicle['id'] == entity_trip['id']:
-                            break
-                        
-    return HttpResponse(f"Hello its me 16 tramwaj and my pozycja :Position: {position}")
+            #     if trip_route_id == "16":
+            #         stopTimeUpdate = trip_update['stopTimeUpdate']
+            #         for stop_update in stopTimeUpdate:
+            #             arrival = stop_update['arrival']
+            #             delay = arrival['delay']
+            #             if entity_vehicle['id'] == entity_trip['id']:
+            #                 break
+        
+    return HttpResponse(f"Hello its me 16 tramwaj and my pozycja :Position: {positions}")
 
 # @api_view(['GET'])
 def api_test_RT(request):
@@ -159,3 +164,4 @@ def api_test_RT(request):
 
 def home(request):
     return HttpResponse(f"Hello")
+
