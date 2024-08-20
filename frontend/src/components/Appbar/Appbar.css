@@ -1,0 +1,11 @@
+.MuiAppBar-root {
+    position: relative;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+
+  .faded {
+    opacity: 0.3; /* Zmniejsza widoczność elementu */
+    transition: opacity 0.3s; /* Płynne przejście */
+}

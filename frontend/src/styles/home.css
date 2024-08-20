@@ -1,33 +1,48 @@
-.body-container{
-    background-color: grey;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-attachment: fixed;
-    margin: 0;
-  
-    /* Optional */
-    display: flex;
-    justify-content: center;
-    min-height: 100vh;
-    align-items: center;
-  }
-  
-.clock-container{
-    backdrop-filter: blur(5px);
-    width: 100%;
-    padding: 10px 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-.clock{
-    color: white;
-    font-size: 6rem;
-    font-weight: bold;
-    font-family: monospace;
-    text-shadow: 3px 3px 5px hsl(0, 0%, 0%, 0.75);
-  }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+
+.home-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+}
+
+.digital-clock {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.tram-bus-buttons {
+  position: absolute;
+  top: 180px; 
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.app-bar, .digital-clock, .tram-bus-buttons {
+  position: absolute;
+  transition: opacity 1s ease-in-out; 
+}
+
+.faded {
+  opacity: 0; 
+  transition: opacity 0.5s; 
+}
+
+
