@@ -52,9 +52,9 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 export default function ButtonAppBar() {
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
-        <Toolbar sx={{ display: 'flex', justifyContent: 'flex-start' }}> {/* Zmienione z 'space-between' na 'flex-start' */}
-          <Box sx={{ display: 'flex', gap: 2, flexGrow: 1 }}> {/* Pozwala na wyśrodkowanie elementów */}
+      <AppBar position="static" sx={{backgroundColor:'black'  }}>
+        <Toolbar sx={{ display: 'flex', justifyContent: 'flex-start' }}> 
+          <Box sx={{ display: 'flex', gap: 2, flexGrow: 1 }}> 
             <Search>
               <SearchIconWrapper>
                 <SearchIcon />

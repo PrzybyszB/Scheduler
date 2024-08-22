@@ -87,14 +87,82 @@ class PremiumList(generics.ListAPIView):
     # permission_classes = [AllowAny]
 
 
+@api_view(["GET"])
+def bus_list(request):
+    try:
+        # Download all Route objects
+        routes = Route.objects.all()
+        bus_ids = []
+
+        if not routes.exists():
+            return Response({'error': 'No routes found'}, 404)
+        
+        # Adding route_id to list
+        for route in routes:
+            route_id = {'route_id': route.route_id}
+            # Bus have 3 elements in name
+            if len(route_id['route_id']) == 3:
+                bus_ids.append(route_id)
+        
+        if not bus_ids:
+            return Response({'message': 'No bus IDs found with 3 characters'})
+        
+        return Response(bus_ids, 200)
+    
+    except Route.DoesNotExist:
+        return Response({'error': 'Route not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, 500)
+
+
+
+@api_view(["GET"])
+def tram_list(request):
+    try:
+        # Download all Route objects
+        routes = Route.objects.all()
+
+        tram_ids = []
+
+        if not routes.exists():
+            return Response({'error': 'No routes found'}, 404)
+        
+        # Adding route_id to list
+        for route in routes:
+            route_id = {'route_id': route.route_id}
+            
+            # Tram have 1 or 2 elements in name
+            if len(route_id['route_id']) in [1,2]:
+                tram_ids.append(route_id)
+        
+        if not tram_ids:
+            return Response({'message': 'No tram IDs found with 3 characters'})
+        
+        return Response(tram_ids, 200)
+    
+    except Route.DoesNotExist:
+        return Response({'error': 'Route not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, 500)
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -----------------------------------------------------------------------------TEST API ---------------------------------------------------------------------------------------------------------------
 @api_view(['GET'])
 def api_test_16(request):
     route_16 = Route.objects.get(route_id = 16)
-    # trip_16 = Trip.objects.get(trip_id = "1_3484103^N+" )
     serializer_class = RouteSerializer(route_16)
-    # serializer_class = TripSerializer(trip_16)
     return Response(serializer_class.data)
-
 
 def api_test_16_rt(request):
     trip_updates_key = 'trip_updates'
@@ -136,7 +204,7 @@ def api_test_16_rt(request):
         
     return HttpResponse(f"Hello its me 16 tramwaj and my pozycja :Position: {positions}")
 
-# @api_view(['GET'])
+@api_view(['GET'])
 def api_test_RT(request):
     keys = ['trip_updates', 'feeds', 'vehicle_positions']
     timestamps = []
@@ -155,12 +223,6 @@ def api_test_RT(request):
         
     return HttpResponse(', '.join(timestamps))
 
-# @api_view(['GET'])
-# def api_user_list(request):
-#     user_list = User.objects.all()
-#     serializer_class = UserSerializer(user_list, many=True)
-#     # permission_classes = [AllowAny]
-#     return Response(serializer_class.data)
 
 def home(request):
     return HttpResponse(f"Hello")

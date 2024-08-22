@@ -3,6 +3,7 @@ import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import Typography from '@mui/material/Typography';
+import '/src/pages/Home/Components/Buttons/MainButtons.css'
 
 
 
@@ -94,7 +95,6 @@ export default function TramBusButton() {
   return (
     <Box sx={{ 
       display: 'flex', 
-      flexWrap: 'wrap', 
       minWidth: 300, 
       width: '100%',
       justifyContent: 'center',

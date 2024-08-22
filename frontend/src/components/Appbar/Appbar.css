@@ -6,6 +6,6 @@
   }
 
   .faded {
-    opacity: 0.3; /* Zmniejsza widoczność elementu */
-    transition: opacity 0.3s; /* Płynne przejście */
+    opacity: 0.3;
+    transition: opacity 0.3s; 
 }
