@@ -1,15 +1,10 @@
 
-.app-bar{
-  background-color: black;
-  color: white;
-  padding: 16px;
-
-}
-
 .button-container{
   display: flex;
   gap: 16px;
+  margin-top: 10px;
   justify-content: right;
+  transform: translateX(-60px);
 }
 
 .button {
@@ -17,7 +12,7 @@
   background-color: transparent;
   border: none;
   cursor: pointer;
-  padding: 8px 16px;
+  padding: 16px;
   font-size: 16px;
   text-transform: uppercase;
   font-family: 'Anticfont';

@@ -32,7 +32,7 @@ const images: Image[] = [
   },
 ];
 
-const HomeButton = () => {
+const Buttons = () => {
   return (
     <div className={styles['container']}>
       {images.map((image) => (
@@ -55,4 +55,4 @@ const HomeButton = () => {
 }
 
 
-export default HomeButton ;
+export default Buttons ;

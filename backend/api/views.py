@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.models import User
-from .models import Profile, Premium, Route, Trip
+from .models import Profile, Premium, Route, Trip, Stop
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -29,7 +29,6 @@ class APIRoot(APIView):
 
             # Add next endpoints
         })
-
 
 
 class CreateUser(generics.CreateAPIView):
@@ -86,12 +85,25 @@ class PremiumList(generics.ListAPIView):
     serializer_class = PremiumSerializer
     # permission_classes = [AllowAny]
 
+@api_view(["GET"])
+def stops_list(request):
+    stops = Stop.objects.all().order_by('stop_name')
+    stops_list = []
+
+    if not stops.exists():
+        return Response({'error' : 'No stops found' }, 404)
+    
+    for stop in stops:
+        stop_name = {'stop_name' : stop.stop_name}
+        stops_list.append(stop_name)
+
+    return Response(stops_list, 200)
 
 @api_view(["GET"])
 def bus_list(request):
     try:
         # Download all Route objects
-        routes = Route.objects.all()
+        routes = Route.objects.all().order_by('route_id')
         bus_ids = []
 
         if not routes.exists():
@@ -113,8 +125,6 @@ def bus_list(request):
         return Response({'error': 'Route not found'}, status=404)
     except Exception as e:
         return Response({'error': str(e)}, 500)
-
-
 
 @api_view(["GET"])
 def tram_list(request):
@@ -145,7 +155,11 @@ def tram_list(request):
     except Exception as e:
         return Response({'error': str(e)}, 500)
 
-
+@api_view(['GET'])
+def transport_detail(request, id):
+    transport_route = Route.objects.get(route_id=id)
+    serializer_class = RouteSerializer(transport_route)
+    return Response(serializer_class.data)
 
 
 

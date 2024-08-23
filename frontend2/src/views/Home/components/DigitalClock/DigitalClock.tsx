@@ -1,33 +1,42 @@
-import { useState, useEffect } from 'react';
-import styles from './styles.module.scss';
-import {format} from 'date-fns'
+import { useState, useEffect } from "react";
+import styles from "./styles.module.scss";
+import Link from "next/link";
+import { format } from "date-fns";
 
-const DigitalClock = () => {
-    const [time, setTime] = useState<string|null>(null);
+type DigitalClockProps = {
+  fontSize?: string;
+};
 
-    useEffect(() => {
-        const intervalID = setInterval(() => {
-            setTime(new Date().toISOString());
-        }, 1000);
+const DigitalClock = ({ fontSize = "8rem" }: DigitalClockProps) => {
+  const [time, setTime] = useState<string | null>(null);
 
-        return () => {
-            clearInterval(intervalID);
-        };
-    }, []);
+  useEffect(() => {
+    const intervalID = setInterval(() => {
+      setTime(new Date().toISOString());
+    }, 1000);
 
-    if(!time) {
-        return null;
-    }
+    return () => {
+      clearInterval(intervalID);
+    };
+  }, []);
 
-    return (
-        <div className={styles['body-container']}>
-            <div className={styles['clock-container']}>
-                <div className={styles['clock']}>
-                    <span className={styles['clock-span']}>{format(new Date(time), "HH:mm:ss")}</span>
-                </div>
-            </div>
+  if (!time) {
+    return null;
+  }
+
+  return (
+    <Link href="/" passHref>
+      <div className={styles["body-container"]}>
+        <div className={styles["clock-container"]}>
+          <div className={styles["clock"]} style={{ fontSize }}>
+            <span className={styles["clock-span"]}>
+              {format(new Date(time), "HH:mm:ss")}
+            </span>
+          </div>
         </div>
-    );
-}
+      </div>
+    </Link>
+  );
+};
 
 export default DigitalClock;

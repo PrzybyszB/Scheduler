@@ -18,10 +18,12 @@
 
 html,
 body {
+  font-size: 14px;
   color: white;
   background-color: black;
   max-width: 100vw;
-  overflow-x: hidden;
+  font-family: 'Anticfont';
+
 }
 
 body {
@@ -32,8 +34,6 @@ a {
   color: inherit;
   text-decoration: none;
 }
-
-
 
 /*
 @media (prefers-color-scheme: dark) {
