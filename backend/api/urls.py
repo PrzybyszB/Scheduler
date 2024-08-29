@@ -20,5 +20,6 @@ urlpatterns = [
     path('tram-list/', tram_list, name='tram-list'),
     path('stops-list/', stops_list, name='stop-list'),
     path('<str:id>/', transport_detail, name='transport-detail'),
+    # path('xd/', transport_detail, name='transport-detail'),
 
 ]

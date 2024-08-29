@@ -1,0 +1,14 @@
+const test ={
+  id: '1',
+  Button: () => {
+    console.log(this) // window
+  }
+}
+
+const test = {
+  id: '1',
+  Button: function() {
+    console.log(this) // test
+  }
+}
+

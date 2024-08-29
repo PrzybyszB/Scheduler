@@ -1,0 +1,55 @@
+.clock-container {
+    font-size: 8rem;
+    width: 100%;
+    padding: 10px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+  
+.clock {
+  color: hsl(0, 0%, 100%);
+  font-weight: bold; 
+}
+
+  .clock-shadow {
+    transform: rotateX(180deg);
+    opacity: .7;
+    filter: blur(3px);
+    margin-top: -30px;
+  }
+
+
+
+.container-tram-digital-clock{
+  font-size: 4rem;
+  display: flex;
+  margin-left: -1150px;
+  margin-top: -60px;
+
+}
+
+
+.container-tram-clock-shadow{
+  filter: None;
+  transform: none;
+  margin-top: 0;
+  opacity: 1;
+}
+
+.container-bus-digital-clock{
+  font-size: 4rem;
+  display: flex;
+  margin-left: -1150px;
+  margin-top: -60px;
+
+}
+
+
+.container-bus-clock-shadow{
+  filter: None;
+  transform: none;
+  margin-top: 0;
+  opacity: 1;
+}

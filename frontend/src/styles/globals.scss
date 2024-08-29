@@ -1,0 +1,30 @@
+
+@import './bootstrap';
+
+@font-face {
+  font-family: 'Anticfont';
+  src: url('../assets/fonts/AnticDidone-Regular.ttf');
+}
+
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  font-size: 14px;
+  color: white;
+  background-color: black;
+  font-family: 'Anticfont';
+
+}
+
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
