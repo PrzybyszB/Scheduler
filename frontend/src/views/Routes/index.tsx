@@ -3,22 +3,20 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
 type ResponseRouteData = {
-    patterns: string;
-    most_common_patterns: string
+    [key: string]: string[];
 };
 
 const fetchRouteData = async (id: string): Promise<ResponseRouteData> => {
-    const response = await axios.get(`/api/${id}`);
+    const response = await axios.get(`http://localhost:8000/api/${id}/`);
  
     return response.data;
 };
 
 function RouteDetail() { 
-    
     const router = useRouter();
     const { id } = router.query;
 
-    const {data} = useQuery({
+    const { data, isError, isLoading } = useQuery({
         queryKey: ['transport-detail', id],
         queryFn: () => {
             if(id && typeof id === 'string'){
@@ -29,22 +27,36 @@ function RouteDetail() {
         },
         enabled: !!id,
     });
-    console.log(data)
- 
- 
-    if(!data) {
-        return <p>No data found</p>
+
+    if (isLoading) return <p>Loading...</p>;
+    if (isError) return <p>Error fetching data</p>;
+    if (!data) return <p>No data found</p>;
+    
+    const patterns = Object.entries(data)
+        .map(([key, value]) => ({ pattern: value, count: value.length }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 2);
+
+        return (
+            <div>
+                <h1>Most Common Patterns:</h1>
+                <ul>
+                    {patterns.map((item, index) => (
+                        <li key={index}>
+                            {/* Render the first stop separately */}
+                            <h1>{item.pattern[0]}</h1>
+
+                            {item.pattern.slice(0).map((stop, idx) => (
+                                <span key={idx}>
+                                    {' -> '}
+                                    {stop}
+                                </span>
+                            ))}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
     }
-
-    return (
-        <div>
-         
-                    <p>Patterns: {data.patterns}</p>
-                    <p>Most Common Patterns: {data.most_common_patterns}</p>
-
-       
-        </div>
-    );
-}
-
+    
 export default RouteDetail;

@@ -1,3 +1,6 @@
+import operator
+
+
 def convert_txt_to_json(txt_content):
     lines = txt_content.splitlines()
     header = lines[0].split(",")
@@ -9,8 +12,8 @@ def convert_txt_to_json(txt_content):
         fail_line.append(values)
         if len(values) != len(header):
             # Handling unexpected number of values
-            print(f"Skipping line with unexpected number of values: {line}")
-            print(len(fail_line))
+            # print(f"Skipping line with unexpected number of values: {line}")
+            # print(len(fail_line))
             continue
         
         # Handling special characters or formatting issues
@@ -50,7 +53,7 @@ stops_json_data = convert_txt_to_json(stops_data)
 routes = {}
 
 
-route_id ="16"
+route_id = "16"
 
 # Itereting data from trips.txt to get trip_id
 for trips in trips_json_data:
@@ -68,6 +71,7 @@ for stop_times in stop_times_json_data:
     stop_times_trip_id = stop_times['trip_id']
     stop_times_stop_id = stop_times['stop_id']
     departure_time = stop_times['departure_time']
+    stop_sequence = stop_times['stop_sequence']
     
     
     # Check that stop_times_trip_id is the same like in trip_id in routes
@@ -77,7 +81,7 @@ for stop_times in stop_times_json_data:
         routes[stop_times_trip_id]['stops_detail'].append({
             'stop_id': stop_times_stop_id,
             'departure_time': departure_time,
-            
+            'stop_sequence': stop_sequence
         })
 
 # Make dict with stops
@@ -93,12 +97,13 @@ for trip_id, trip_info in routes.items():
     for detail in trip_info['stops_detail']:
         stop_id = detail['stop_id']
         departure_time = detail['departure_time']
+        stop_sequence = detail['stop_sequence']
         stop_name = stops_dict.get(stop_id, None)
         if stop_name:
             stop_names.append({
-                'stop_id': stop_id,
                 'stop_name': stop_name,
                 'departure_time': departure_time,
+                'stop_sequence': stop_sequence
                 })
         # else:
         #     print(f"Warning: Stop ID {stop_id} not found in stops_dict")
@@ -111,10 +116,11 @@ for trip_id, trip_info in routes.items():
 # Itereting departure time on stops for trip id 
 # for trip_id, stop_details in routes.items():
 #     print(f"Trip ID: {trip_id}")
-#     for detail in stop_details:
+#     for detail in stop_details['stops_detail']:
 #         stop_name = detail['stop_name']
 #         departure_time = detail['departure_time']
-#         print(f"  Stop name: {stop_name}, Departure Time: {departure_time}")
+#         stop_sequence = detail['stop_sequence']
+#         print(f"  Stop name: {stop_name}, Departure Time: {departure_time}, Stop Sequence {stop_sequence}")
 #     print()
 
 # ------------------------------------------------------------ ROUTES PATTERN -----------------------------------------
@@ -132,87 +138,76 @@ def get_stop_sequences(routes):
     for trip_id, trip_data in routes.items():
 
         headsign = trip_data['headsign']
-        # print(f"Trip ID: {trip_id}, Headsign: {headsign}")
-
-        stop_ids = []
         stop_names = []
 
         for stop in trip_data['stops_detail']:
-            stop_id = stop['stop_id']
             stop_name = stop['stop_name']
-            stop_ids.append(stop_id)
             stop_names.append(stop_name)
         
         # Making a tuple to get IDS(stop_ids) for sequence
-        sequence = tuple(stop_ids)
+        sequence = tuple(stop_names)
 
         if sequence not in sequences:
             sequences[sequence] = {
                 "trip_ids": [],
                 "headsign": headsign,
                 "stops_details": []
-                }
-            
+                }   
         sequences[sequence]["trip_ids"].append(trip_id)
-        
 
-# >>> for i,v in enumerate(["xd","xdd"]):
-# ...     print(f"index: {i} value: {v}")
-# ... 
-# index: 0 value: xd
-# index: 1 value: xdd
-
-# zmienić to że nie że stop[0] = stop[1] tylko że id takie to przystanek taki 
         stop_descriptions = []
-        for i in range(len(stop_ids)):
-            stop_id = stop_ids[i]
-            stop_name = stop_names[i]
-            stop_descriptions.append((stop_id, stop_name))
-        
-
-        sorted_stops = []
-        for stop_id in stop_ids:
-            for stop in stop_descriptions:
-                if stop[0] == stop_id:
-                    sorted_stops.append(f'{stop[0]} = {stop[1]}')
-        
-        sequences[sequence]["stops"] = sorted_stops
+        for stop in stop_names:
+            stop_descriptions.append(stop)
+        sequences[sequence]["stops"] = stop_descriptions
     
+
     return sequences
 
 
 def find_common_patterns(sequences):
     items = list(sequences.items())
-    patterns_counter = []
+    patterns_result = []
     index = 1
+    stops_display = []
 
     for pattern, data in items:
-        stops_display = ", ".join(data['stops'])
-        trip_ids_display = ", ".join(data['trip_ids'])
-        trip_headsign = data['headsign']
-        
-        
+        stops = data['stops']
+        stops_display.append(stops)
         counter = len(data['trip_ids'])
-        patterns_counter.append(counter)
 
 
-        print(f"Pattern {index}: ({stops_display})")
-        print(f"HeadSign: {trip_headsign}")
-        print(f"Counter: {counter}")
-        print(f"Trip_ids  = ({trip_ids_display})\n")
-        
+        pattern_info = {
+            'stops_display': stops_display,
+            'counter': counter,
+        }
+
+        patterns_result.append(pattern_info)
 
         index += 1
+
+    patterns_result.sort(key=lambda x: x['counter'], reverse=True)
+    most_common_patterns = patterns_result[:2]
+
     
-    two_most_common_pattern = sorted(patterns_counter, reverse=True)[:2]
-
-    print(f"Two most common patterns: {two_most_common_pattern}")
-
-
+    return most_common_patterns
 
 
 sequences = get_stop_sequences(routes)
-
-# Finding patterns and trip_ids
 common_patterns = find_common_patterns(sequences)
+
+for pattern in common_patterns:
+    stops_display = pattern.get('stops_display')  
+
+
+print(stops_display[1])
+print(stops_display[0])
+
+
+# for pattern in common_patterns:
+#     print(f"Pattern {pattern['pattern_index']}: ({pattern['stops_display']})")
+    # print(f"HeadSign: {pattern['trip_headsign']}")
+    # print(f"Counter: {pattern['counter']}")
+    # print(f"Trip_ids = ({pattern['trip_ids_display']})\n")
+
+
 

@@ -148,12 +148,24 @@ def check_and_fetch_static_file(url, key):
         print(f"Unexpected error: {e}")
 
 def convert_txt_to_json(txt_content):
+
+    # For the time that I don't get well with exceptation in routes.txt
     lines = txt_content.splitlines()
-    header = lines[0].split(",")  
+    header = lines[0].split(",")
     json_data = []
 
+    fail_line = []
     for line in lines[1:]:
         values = line.split(",")
+        fail_line.append(values)
+        if len(values) != len(header):
+            # Handling unexpected number of values
+            # print(f"Skipping line with unexpected number of values: {line}")
+            # print(len(fail_line))
+            continue
+        
+        # Handling special characters or formatting issues
+        values = [value.strip().strip('"') for value in values]
         json_data.append(dict(zip(header, values)))
 
     return json_data

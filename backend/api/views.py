@@ -161,168 +161,149 @@ def tram_list(request):
 
 @api_view(['GET'])
 def transport_detail(request, id):
-
-    # stop_times.txt contain trip ID and stops_id in order(stop_sequence) and last stop(stop_headsign)
     
-    # --> trips.txt with Trip ID contain route_id --> route_id
+    # --> trips.txt contain route_id and trips_id --> 
 
+    # -- > stop_times.txt contain trip ID and stops_id in order(stop_sequence) -->
     
+    # --> stops.txt contain stops_id and stops_name
 
-    stop_times_key = 'stop_times.txt'
-    trips_key = 'trips.txt'
-    stops = 'stops.txt'
-    
-    stop_times_data = client.get(stop_times_key)
-    trips_data = client.get(trips_key)
-    stops_data = client.get(stops)
-
-    stop_times_json_data = json.loads(stop_times_data)
-    trips_json_data = json.loads(trips_data)
-    stops_json_data = json.loads(stops_data)
-
-    routes = {}
-    stops_dict = {}
-
-    
-
-    for trips in trips_json_data:
-        trips_route_id = trips['route_id']
-        if trips_route_id == id:
-            trip_id = trips['trip_id']
-            trip_headsign = trips['trip_headsign']
-            routes[trip_id]= {
-                'trip_headsign' : trip_headsign,
-                'stops_detail' : []
-            }
-
-    for stop_times in stop_times_json_data:
-        stop_times_trip_id = stop_times['trip_id']
-        stop_times_stop_id = stop_times['stop_id']
-        departure_time = stop_times['departure_time']
-
-        if stop_times_trip_id in routes:
-            routes[stop_times_trip_id]['stops_detail'].append({
-                'stop_id': stop_times_stop_id,
-                'departure_time': departure_time,
-            
-        })
-            
-    
-    for stops in stops_json_data:
-        stop_id = stops['stop_id']
-        stop_name = stops['stop_name']
-        stops_dict[stop_id] = stop_name
-
-    for trip_id, trip_info in routes.items():
-        stop_names = []
-        for detail in trip_info['stops_detail']:
-            stop_id = detail['stop_id']
-            departure_time = detail['departure_time']
-            stop_name = stops_dict.get(stop_id, None)
-            if stop_name:
-                stop_names.append({
-                    'stop_id': stop_id,
-                    'stop_name': stop_name,
-                    'departure_time': departure_time,
-                    })
-        routes[trip_id] = {
-            'trip_headsign': trip_info['trip_headsign'],
-            'stops_detail': stop_names
-        }
-    
-    def get_stop_sequences(routes):
-        sequences = {}
+    # Getting data from redis
+    try:
+        stop_times_key = 'stop_times.txt'
+        trips_key = 'trips.txt'
+        stops_key = 'stops.txt'
         
-        for trip_id, trip_data in routes.items():
+        try:
+            stop_times_data = client.get(stop_times_key)
+            trips_data = client.get(trips_key)
+            stops_data = client.get(stops_key)
+        except (ConnectionError, TimeoutError) as e:
+            return Response({'error': 'Error retrieving data from the client.'}, status=500)
 
-            trip_headsign = trip_data['trip_headsign']
-            # print(f"Trip ID: {trip_id}, Headsign: {headsign}")
+        try:
+            stop_times_json_data = json.loads(stop_times_data)
+            trips_json_data = json.loads(trips_data)
+            stops_json_data = json.loads(stops_data)
+        except json.JSONDecodeError as e:
+            return Response({'error': 'Error decoding JSON data.'}, status=500)
 
-            stop_ids = []
-            stop_names = []
+        routes = {}
+        stops_dict = {}
 
-            for stop in trip_data['stops_detail']:
-                stop_id = stop['stop_id']
-                stop_name = stop['stop_name']
-                stop_ids.append(stop_id)
-                stop_names.append(stop_name)
-            
-            # Making a tuple to get IDS(stop_ids) for sequence
-            sequence = tuple(stop_ids)
+        # Itereting data from trips.txt to get trip_id
+        try:
+            for trips in trips_json_data:
+                trips_route_id = trips['route_id']
+                if trips_route_id == id:
+                    trip_id = trips['trip_id']
+                    routes[trip_id]= {'stops_detail' : []}
+        except KeyError as e:
+            return Response({'error': f'Missing key in trips data: {e}'}, status= 500)
 
-            if sequence not in sequences:
-                sequences[sequence] = {
-                    "trip_ids": [],
-                    "trip_headsign": trip_headsign,
-                    "stops_details": []
-                    }
+        # Itereting data from stop_times.txt to get departure time and trip_id
+        try:   
+            for stop_times in stop_times_json_data:
+                stop_times_trip_id = stop_times['trip_id']
+                stop_times_stop_id = stop_times['stop_id']
+
+                # Check that stop_times_trip_id is the same like in trip_id in routes
+                if stop_times_trip_id in routes:
+                    routes[stop_times_trip_id]['stops_detail'].append({
+                        'stop_id': stop_times_stop_id,
+                })
+        except KeyError as e:
+            return Response({'error':f'Missing key in stop_times data: {e}'}, status= 500)
+        
+        # Make dict with stops
+        try:      
+            for stops in stops_json_data:
+                stop_id = stops['stop_id']
+                stop_name = stops['stop_name']
+                stops_dict[stop_id] = stop_name
+        except KeyError as e:
+            return Response({'error':f'Missing key in stops data: {e}'}, status= 500)
+
+        # Map stop_ids to stop_names
+        try: 
+            for trip_id, trip_info in routes.items():
+                stop_names = []
+                for detail in trip_info['stops_detail']:
+                    stop_id = detail['stop_id']
+                    stop_name = stops_dict.get(stop_id, None)
+                    if stop_name:
+                        stop_names.append({
+                            'stop_name': stop_name,
+                            })
+                routes[trip_id] = {'stops_detail': stop_names}
+        except KeyError as e:
+            return Response({'error':f'Error mapping stop_ids to stop_names: {e}'}, status= 500)
+        
+        # Get sequences of stops
+        try:
+            sequences = {}    
+            for trip_id, trip_data in routes.items():
+
+                # Making a list with stops name 
+                stop_names = []
+                for stop in trip_data['stops_detail']:
+                    stop_name = stop['stop_name']
+                    stop_names.append(stop_name)
+                    
+                # Making a tuple to get IDS(stop_ids) for sequence
+                sequence = tuple(stop_names)
+
+                if sequence not in sequences:
+                    sequences[sequence] = {
+                        "trip_ids": [],
+                        'stops': stop_names
+                        }
+                        
+                sequences[sequence]["trip_ids"].append(trip_id)
+        except KeyError as e:
+            return Response({'error': f'Error generating sequences:{e}'}, status= 500)
+        
+
+        # Creating patterns from the stop sequences and identifying the two most frequently occurring ones.
+        try:
+            items = list(sequences.items())
+            patterns_result = []
+            stops_display = []
                 
-            sequences[sequence]["trip_ids"].append(trip_id)
+            for pattern, data in items:
+                stops = data['stops']
+                stops_display.append(stops)
+                counter = len(data['trip_ids'])
 
-            stop_descriptions = []
-            for i in range(len(stop_ids)):
-                stop_id = stop_ids[i]
-                stop_name = stop_names[i]
-                stop_descriptions.append((stop_id, stop_name))
-            
+                pattern_info = {
+                    'stops_display': stops_display,
+                    'counter': counter,
+                    }
+                patterns_result.append(pattern_info)
 
-            sorted_stops = []
-            for stop_id in stop_ids:
-                for stop in stop_descriptions:
-                    if stop[0] == stop_id:
-                        sorted_stops.append(f'{stop[0]} = {stop[1]}')
-            
-            sequences[sequence]["stops"] = sorted_stops
-        
-        return sequences
+            patterns_result.sort(key=lambda x: x['counter'], reverse=True)
+            common_patterns =  patterns_result[:2]
+        except KeyError as e:
+            return Response({'error': f'Error creating patterns: {e}'}, status= 500)
+        except IndexError as e:
+            return Response({'error': 'Not enough patterns found.'}, status= 500)
 
-    def find_common_patterns(sequences):
-        items = list(sequences.items())
-        patterns_counter = []
-        patterns_result = []
-        index = 1
-
-        for pattern, data in items:
-            stops_display = ", ".join(data['stops'])
-            trip_ids_display = ", ".join(data['trip_ids'])
-            trip_headsign = data['trip_headsign']
-
-            counter = len(data['trip_ids'])
-            patterns_counter.append(counter)
-
-            pattern_info = {
-                'pattern_index': index,
-                'stops_display': stops_display,
-                'trip_headsign': trip_headsign,
-                'counter': counter,
-                'trips_ids': trip_ids_display 
+        # Return only two most common routes and their first stops as most_common_routes[0][0] and most_common_routes[1][0]
+        response_data = {}
+        for pattern in common_patterns:
+            most_common_routes = pattern.get('stops_display')
+            response_data = {
+                "id": id,
+                most_common_routes[0][0]: most_common_routes[0],
+                most_common_routes[1][0] : most_common_routes [1]
             }
-            patterns_result.append(pattern_info)
 
-            index += 1
+        return Response(response_data)
 
-        # two_most_common_pattern = sorted(patterns_counter, reverse=True)[:2]
-
-        return patterns_result
-
-    sequences = get_stop_sequences(routes)
-    common_patterns = find_common_patterns(sequences)
-
-    stop_display_data = []
-    for pattern in common_patterns:
-        stops_pattern = pattern['stops_display']
-        counter = pattern['counter']
-        stop_display_data.append((stops_pattern,counter))
-
-
-    
-    response_data = {
-        "patterns": stop_display_data,
-    }
-
-    return Response(response_data)
-
-
+    except Exception as e:
+        # Handle and log the exception
+        print(f"An error occurred: {e}")
+        return Response({"error": str(e)}, status=500)
 
 
 
