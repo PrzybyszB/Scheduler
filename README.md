@@ -50,14 +50,15 @@ This application provides a scheduler and route planner for public transport (MP
     cd Scheduler/backend
     ```
 
-3. Run the application using Docker Compose:
+3. Make sure that in celery.py is that settings in beat_schedule
+   'schedule': 5.0,  # every 5 sec
+
+4. Run the application using Docker Compose:
 
     ```
     docker-compose up --build
     ```
 
-4. Make sure that in celery.py is that settings in beat_schedule
-   'schedule': 5.0,  # every 5 sec
 
 
 5. Frontend will be on Nginx, actually work in progress (learning about frontend)
