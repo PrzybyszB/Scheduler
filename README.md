@@ -41,13 +41,13 @@ This application provides a scheduler and route planner for public transport (MP
 1. Clone the repository to your local machine:
 
     ```
-    git clone <repository_url>
+    git clone https://github.com/PrzybyszB/Scheduler
     ```
 
 2. Navigate to the project directory:
 
     ```
-    cd Scheduler
+    cd Scheduler/backend
     ```
 
 3. Run the application using Docker Compose:
