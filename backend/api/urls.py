@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework import routers
-from .views import APIRoot, CreateUser, UserProfileList, UserProfileDetail, UserDetail, UserList, PremiumCreate, PremiumDelete, PremiumList, bus_list, tram_list, stops_list, transport_detail
+from .views import APIRoot, CreateUser, UserProfileList, UserProfileDetail, UserDetail, UserList, PremiumCreate, PremiumDelete, PremiumList, bus_list, tram_list, stops_list, trip_detail, stops_detail
 
 
 app_name = "api"
@@ -19,7 +19,7 @@ urlpatterns = [
     path('bus-list/', bus_list, name='bus-list'),
     path('tram-list/', tram_list, name='tram-list'),
     path('stops-list/', stops_list, name='stop-list'),
-    path('<str:id>/', transport_detail, name='transport-detail'),
-    # path('xd/', transport_detail, name='transport-detail'),
+    path('<str:route_id>/', trip_detail, name='trip-detail'),
+    path('<str:route_id>/<str:stop_id>/', stops_detail, name='stops_detail'),
 
 ]

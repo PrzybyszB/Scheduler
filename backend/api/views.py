@@ -11,7 +11,15 @@ from rest_framework.reverse import reverse
 # from rest_framework.permissions import IsAuthenticated, AllowAny
 from .serializers import ProfileSerializer, UserSerializer, PremiumSerializer, RouteSerializer, TripSerializer
 from .tasks import client
+from datetime import datetime
+# from .services import stop_id, stop_name
 import json
+import gtfs_kit as gk
+import pandas as pd
+import csv
+from io import StringIO
+import os
+import tempfile 
 
 
 class APIRoot(APIView):
@@ -30,6 +38,8 @@ class APIRoot(APIView):
             'tram list' : 'api/tram-list',
             'bus list' : 'api/bus-list',
             'stops list' : 'api/stops-list',
+            'schedule for recent day' : '<str:route_id>/<str:stop_id>/',
+            'schedule for request day' : '<str:route_id>/<str:stop_id>/?day=monday',
 
             # Add next endpoints
         })
@@ -160,7 +170,7 @@ def tram_list(request):
         return Response({'error': str(e)}, 500)
 
 @api_view(['GET'])
-def transport_detail(request, id):
+def trip_detail(request, route_id):
     
     # --> trips.txt contain route_id and trips_id --> 
 
@@ -169,6 +179,275 @@ def transport_detail(request, id):
     # --> stops.txt contain stops_id and stops_name
 
     # Getting data from redis
+
+    try:
+        stop_times_key = 'stop_times.txt'
+        trips_key = 'trips.txt'
+        stops_key = 'stops.txt'
+        
+        try:
+            stop_times_data = client.get(stop_times_key).decode('utf-8')
+            trips_data = client.get(trips_key).decode('utf-8')
+            stops_data = client.get(stops_key).decode('utf-8')
+        except (ConnectionError, TimeoutError) as e:
+            return Response({'error': 'Error retrieving data from the client.'}, status=500)
+
+        stop_times_csv = csv.DictReader(StringIO(stop_times_data))
+        trips_csv = csv.DictReader(StringIO(trips_data))
+        stops_csv = csv.DictReader(StringIO(stops_data))
+
+        routes = {}
+        stops_dict = {}
+
+        # Itereting data from trips.txt to get trip_id
+        try:
+            for trips in trips_csv:
+                trips_route_id = trips['route_id']
+                direction_id = trips['direction_id']
+                if trips_route_id == route_id:
+                    trip_id = trips['trip_id']
+                    routes[trip_id] = {
+                        'direction_id': direction_id,
+                        'stops_detail': []
+                    }
+        except KeyError as e:
+            return Response({'error': f'Missing key in trips data: {e}'}, status= 500)
+
+        # Itereting data from stop_times.txt to get departure time and trip_id
+        try:   
+            for stop_times in stop_times_csv:
+                stop_times_trip_id = stop_times['trip_id']
+                stop_times_stop_id = stop_times['stop_id']
+
+                # Check that stop_times_trip_id is the same like in trip_id in routes
+                if stop_times_trip_id in routes:
+                    routes[stop_times_trip_id]['stops_detail'].append({
+                        'stop_id': stop_times_stop_id,
+                    })
+        except KeyError as e:
+            return Response({'error': f'Missing key in stop_times data: {e}'}, status= 500)
+        
+        # Make dict with stops
+        try:      
+            for stops in stops_csv:
+                stop_id = stops['stop_id']
+                stop_name = stops['stop_name']
+                stops_dict[stop_id] = stop_name
+        except KeyError as e:
+            return Response({'error': f'Missing key in stops data: {e}'}, status= 500)
+
+        # Map stop_ids to stop_names
+        try: 
+            for trip_id, trip_info in routes.items():
+                stop_names = []
+                for detail in trip_info['stops_detail']:
+                    stop_id = detail['stop_id']
+                    stop_name = stops_dict.get(stop_id, None)
+                    if stop_name:
+                        stop_names.append({
+                            'stop_name': stop_name,
+                        })
+                routes[trip_id]['stops_detail'] = stop_names
+        except KeyError as e:
+            return Response({'error': f'Error mapping stop_ids to stop_names: {e}'}, status= 500)
+        
+        # Get sequences of stops
+        try:
+            sequences = {}    
+            for trip_id, trip_data in routes.items():
+
+                # Making a list with stops name 
+                stop_names = []
+                for stop in trip_data['stops_detail']:
+                    stop_name = stop['stop_name']
+                    stop_names.append(stop_name)
+
+                # Getting the direction_id from the routes
+                direction_id = trip_data['direction_id']
+                    
+                # Making a tuple to get IDS(stop_ids) for sequence
+                sequence = tuple(stop_names)
+
+                if sequence not in sequences:
+                    sequences[sequence] = {
+                        'direction_id': direction_id,  # Ensure this key exists
+                        'trip_ids': [],
+                        'stops': stop_names,
+                    }
+                        
+                sequences[sequence]["trip_ids"].append(trip_id)
+        except KeyError as e:
+            return Response({'error': f'Error generating sequences: {e}'}, status= 500)
+
+        # Tworzenie wzorców i identyfikacja najbardziej popularnego wzoru dla każdego direction_id
+        try:
+            patterns_count = {}
+            for sequence, data in sequences.items():
+                direction_id = data['direction_id']
+                count = len(data['trip_ids'])
+
+                # Dodanie tylko wzorców, które mają więcej niż 10 powtórzeń
+                if count > 50:
+                    if direction_id not in patterns_count:
+                        patterns_count[direction_id] = {
+                            'stops': data['stops'],
+                            'count': count
+                        }
+                    else:
+                        # Sprawdzenie, czy aktualny wzór jest bardziej popularny
+                        if count > patterns_count[direction_id]['count']:
+                            patterns_count[direction_id] = {
+                                'stops': data['stops'],
+                                'count': count
+                            }
+
+            # Przygotowanie odpowiedzi
+            response_data = {
+                "route id": route_id,
+                "most_popular_patterns": {}
+            }
+            for direction_id, pattern in patterns_count.items():
+                response_data["most_popular_patterns"][direction_id] = {
+                    'stops': pattern['stops'],
+                }
+        
+        except Exception as e:
+            return Response({'error': f'Error creating patterns: {e}'}, status= 500)
+
+        return Response(response_data)
+
+    except Exception as e:
+        # Handle and log the exception
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET'])
+def stops_detail(request, route_id, stop_id):
+
+    def fetch_gtfs_files_from_redis():
+        try:
+
+            # Fetch all keys from Redis that do not end with ':hash'
+            gtfs_keys = [key.decode('utf-8') for key in client.keys('*') if not key.decode('utf-8').endswith(':hash')]
+            return gtfs_keys
+        except Exception as e:
+            return {'error': f'Error fetching GTFS files from Redis: {e}'}
+
+    def load_gtfs_feed_from_redis(filename):
+        try:
+            file_content = client.get(filename)
+            if file_content:
+
+                # Use a temporary file to handle the GTFS data
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    temp_file.write(file_content)
+                    temp_file_path = temp_file.name
+
+                try:
+
+                    # Load GTFS data from the temporary file
+                    feed = gk.feed.read_feed(path_or_url=temp_file_path, dist_units='km')
+                    return feed
+                except Exception as e:
+                    return {'error': f'Error loading GTFS feed from {temp_file_path}: {e}'}
+                finally:
+
+                    # Remove the temporary file
+                    os.remove(temp_file_path)
+            else:
+                return {'error': f'File {filename} not found in Redis.'}
+        except Exception as e:
+            return {'error': f'Error loading GTFS feed from Redis: {e}'}
+
+    def extract_date_from_filename(filename):
+        try:
+
+            # Extract date from the filename (e.g., '20240907_20240930.zip')
+            date_str = filename.split('_')[0]
+
+            # Convert string to date object
+            return datetime.strptime(date_str, '%Y%m%d')
+        except ValueError:
+
+            # If the date format is invalid, skip this file
+            return None    
+    
+    # Request day parameter
+    day_of_week = request.GET.get('day', None)
+
+    # Define days of the week
+    days_of_week = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    if day_of_week and day_of_week not in days_of_week:
+        return Response({"error": f"Invalid day of the week. Valid values are: {', '.join(days_of_week)}."}, status=404)
+    
+    # Get the current day of the week, if there is no request day
+    current_day_of_week = day_of_week or days_of_week[datetime.today().weekday()]
+
+    # Fetch GTFS files from Redis
+    gtfs_files = fetch_gtfs_files_from_redis()
+    if isinstance(gtfs_files, dict) and 'error' in gtfs_files:
+        return Response(gtfs_files, status=500)
+
+    if not gtfs_files:
+        return Response({'message': 'No GTFS files available in Redis.'}, status=404)
+
+    # Filter and sort GTFS files based on date extracted from filename
+    gtfs_files_filtered = [f for f in gtfs_files if extract_date_from_filename(f) is not None]
+    gtfs_files_sorted = sorted(gtfs_files_filtered, key=extract_date_from_filename, reverse=True)
+
+    day_dataframes = {day: None for day in days_of_week}
+
+    for gtfs_file in gtfs_files_sorted:
+        feed = load_gtfs_feed_from_redis(gtfs_file)
+        if isinstance(feed, dict) and 'error' in feed:
+            return Response(feed, status=500)
+        if not feed:
+            continue
+
+        # Extract dataframes from GTFS feed
+        calendar_df = feed.calendar
+        trips_df = feed.trips
+        stop_times_df = feed.stop_times
+        stops_df = feed.stops
+
+        if day_dataframes[current_day_of_week] is None:
+
+            # Filter active services based on the current day
+            active_services = calendar_df[calendar_df[current_day_of_week] == 1]
+            if not active_services.empty:
+
+                # Merge dataframes to get the full schedule
+                trips_on_day = pd.merge(active_services, trips_df, on='service_id')
+                stop_times_on_day = pd.merge(trips_on_day, stop_times_df, on='trip_id')
+                full_schedule = pd.merge(stop_times_on_day, stops_df, on='stop_id')
+
+                # Filter schedule based on the given stop_id and route_id
+                full_schedule_filtered = full_schedule[
+                    (full_schedule['stop_id'] == stop_id) & 
+                    (full_schedule['route_id'] == route_id)
+                ]
+
+                day_dataframes[current_day_of_week] = full_schedule_filtered
+
+        if day_dataframes[current_day_of_week] is not None:
+            break
+
+    if day_dataframes[current_day_of_week] is not None:
+        # Prepare final dataframe for the response
+        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'stop_name', 'start_date']].sort_values(by='departure_time')
+        data = final_df.to_dict(orient='records')
+        return Response(data, status=200)
+    else:
+        return Response({'message': 'No schedule found for the given route and stop.'}, status=404)
+
+'''
+Thats a view for all trips in zip, maybe will be usefull
+
+
+@api_view(['GET'])
+def trip_detail(request, route_id, stop_id):
+#     # --> stops.txt contain stops_id
+
     try:
         stop_times_key = 'stop_times.txt'
         trips_key = 'trips.txt'
@@ -191,13 +470,13 @@ def transport_detail(request, id):
         routes = {}
         stops_dict = {}
 
-        # Itereting data from trips.txt to get trip_id
+         # Itereting data from trips.txt to get trip_id
         try:
             for trips in trips_json_data:
                 trips_route_id = trips['route_id']
-                if trips_route_id == id:
+                if trips_route_id == route_id:
                     trip_id = trips['trip_id']
-                    routes[trip_id]= {'stops_detail' : []}
+                    routes[trip_id]= []
         except KeyError as e:
             return Response({'error': f'Missing key in trips data: {e}'}, status= 500)
 
@@ -206,12 +485,16 @@ def transport_detail(request, id):
             for stop_times in stop_times_json_data:
                 stop_times_trip_id = stop_times['trip_id']
                 stop_times_stop_id = stop_times['stop_id']
+                departure_time = stop_times['departure_time']
 
                 # Check that stop_times_trip_id is the same like in trip_id in routes
                 if stop_times_trip_id in routes:
-                    routes[stop_times_trip_id]['stops_detail'].append({
+
+                    # Adding dict with indetity stop_id and departure_time
+                    routes[stop_times_trip_id].append({
                         'stop_id': stop_times_stop_id,
-                })
+                        'departure_time': departure_time
+                    })
         except KeyError as e:
             return Response({'error':f'Missing key in stop_times data: {e}'}, status= 500)
         
@@ -226,84 +509,43 @@ def transport_detail(request, id):
 
         # Map stop_ids to stop_names
         try: 
-            for trip_id, trip_info in routes.items():
+            for trip_id, stop_details in routes.items():
                 stop_names = []
-                for detail in trip_info['stops_detail']:
+                for detail in stop_details:
                     stop_id = detail['stop_id']
+                    departure_time = detail['departure_time']
                     stop_name = stops_dict.get(stop_id, None)
                     if stop_name:
                         stop_names.append({
                             'stop_name': stop_name,
+                            'stop_id': stop_id,
+                            'departure_time': departure_time
                             })
-                routes[trip_id] = {'stops_detail': stop_names}
+                routes[trip_id] = stop_names
         except KeyError as e:
             return Response({'error':f'Error mapping stop_ids to stop_names: {e}'}, status= 500)
-        
-        # Get sequences of stops
-        try:
-            sequences = {}    
-            for trip_id, trip_data in routes.items():
 
-                # Making a list with stops name 
-                stop_names = []
-                for stop in trip_data['stops_detail']:
-                    stop_name = stop['stop_name']
-                    stop_names.append(stop_name)
-                    
-                # Making a tuple to get IDS(stop_ids) for sequence
-                sequence = tuple(stop_names)
 
-                if sequence not in sequences:
-                    sequences[sequence] = {
-                        "trip_ids": [],
-                        'stops': stop_names
-                        }
-                        
-                sequences[sequence]["trip_ids"].append(trip_id)
-        except KeyError as e:
-            return Response({'error': f'Error generating sequences:{e}'}, status= 500)
-        
-
-        # Creating patterns from the stop sequences and identifying the two most frequently occurring ones.
-        try:
-            items = list(sequences.items())
-            patterns_result = []
-            stops_display = []
-                
-            for pattern, data in items:
-                stops = data['stops']
-                stops_display.append(stops)
-                counter = len(data['trip_ids'])
-
-                pattern_info = {
-                    'stops_display': stops_display,
-                    'counter': counter,
-                    }
-                patterns_result.append(pattern_info)
-
-            patterns_result.sort(key=lambda x: x['counter'], reverse=True)
-            common_patterns =  patterns_result[:2]
-        except KeyError as e:
-            return Response({'error': f'Error creating patterns: {e}'}, status= 500)
-        except IndexError as e:
-            return Response({'error': 'Not enough patterns found.'}, status= 500)
-
-        # Return only two most common routes and their first stops as most_common_routes[0][0] and most_common_routes[1][0]
-        response_data = {}
-        for pattern in common_patterns:
-            most_common_routes = pattern.get('stops_display')
-            response_data = {
-                "id": id,
-                most_common_routes[0][0]: most_common_routes[0],
-                most_common_routes[1][0] : most_common_routes [1]
-            }
+        # Itereting departure time on stops for trip id 
+        response_data = []
+        for trip_id, stop_details in routes.items():
+            for detail in stop_details:
+                stop_name = detail['stop_name']
+                departure_time = detail['departure_time']
+                response_data.append({
+                    'route_id': route_id,
+                    'stop_name': stop_name,
+                    'departure_time': departure_time
+                })
 
         return Response(response_data)
-
+            
+        
     except Exception as e:
         # Handle and log the exception
-        print(f"An error occurred: {e}")
-        return Response({"error": str(e)}, status=500)
+        return Response({'error': str(e)}, status=500)
+
+'''
 
 
 

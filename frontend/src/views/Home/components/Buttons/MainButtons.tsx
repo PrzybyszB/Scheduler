@@ -28,7 +28,7 @@ const images: Image[] = [
   {
     url: '/Map.png',
     title: 'Map',
-    link: '/Map',
+    link: '/map',
   },
 ];
 

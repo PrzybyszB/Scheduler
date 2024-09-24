@@ -48,7 +48,7 @@ class AgencySerializer(serializers.ModelSerializer):
         model = Agency
         fields = ["agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang", "agency_phone"]
 
-class StopStopSerializer(serializers.ModelSerializer):
+class StopsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Stop
         fields = ["stop_id","stop_code","stop_name","stop_lat","stop_lon","zone_id",]

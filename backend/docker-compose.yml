@@ -45,6 +45,8 @@ services:
     command: bash -c "celery -A backend worker --loglevel=info & celery -A backend beat --loglevel=info"
     volumes:
       - .:/code
+    environment:
+      - DJANGO_SETTINGS_MODULE=backend.settings
     depends_on:
       - scheduler_db
       - redis

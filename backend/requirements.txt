@@ -1,4 +1,4 @@
-Django
+django
 djangorestframework
 django-cors-headers
 djangorestframework-simplejwt
@@ -29,6 +29,7 @@ django_celery_beat
 
 # For gtfs
 gtfs-realtime-bindings
+gtfs_kit
 
 
 
