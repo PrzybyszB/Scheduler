@@ -20,7 +20,10 @@ import csv
 from io import StringIO
 import os
 import tempfile 
+import logging
 
+
+logger = logging.getLogger('api')
 
 class APIRoot(APIView):
     def get(self, request, format=None):
@@ -117,7 +120,7 @@ def stops_list(request):
 def bus_list(request):
     try:
         # Download all Route objects
-        routes = Route.objects.all().order_by('route_id')
+        routes = Route.objects.all()
         bus_ids = []
 
         if not routes.exists():
@@ -127,7 +130,9 @@ def bus_list(request):
         for route in routes:
             route_id = {'route_id': route.route_id}
             # Bus have 3 elements in name
-            if len(route_id['route_id']) == 3:
+            if route_id['route_id'] == '201' or route_id['route_id'] == '202':
+                continue
+            elif len(route_id['route_id']) == 3:
                 bus_ids.append(route_id)
         
         if not bus_ids:
@@ -156,7 +161,9 @@ def tram_list(request):
             route_id = {'route_id': route.route_id}
             
             # Tram have 1 or 2 elements in name
-            if len(route_id['route_id']) in [1,2]:
+            if len(route_id['route_id']) <= 2:
+                tram_ids.append(route_id)
+            elif route_id['route_id'] == '201' or route_id['route_id'] == '202':
                 tram_ids.append(route_id)
         
         if not tram_ids:
@@ -171,7 +178,6 @@ def tram_list(request):
 
 @api_view(['GET'])
 def trip_detail(request, route_id):
-    
     # --> trips.txt contain route_id and trips_id --> 
 
     # -- > stop_times.txt contain trip ID and stops_id in order(stop_sequence) -->
@@ -180,6 +186,7 @@ def trip_detail(request, route_id):
 
     # Getting data from redis
 
+    logger.info('statring trip_detail')
     try:
         stop_times_key = 'stop_times.txt'
         trips_key = 'trips.txt'
@@ -189,8 +196,9 @@ def trip_detail(request, route_id):
             stop_times_data = client.get(stop_times_key).decode('utf-8')
             trips_data = client.get(trips_key).decode('utf-8')
             stops_data = client.get(stops_key).decode('utf-8')
+
         except (ConnectionError, TimeoutError) as e:
-            return Response({'error': 'Error retrieving data from the client.'}, status=500)
+            return Response({'error': 'Error retrieving data from the client.'}, 500)
 
         stop_times_csv = csv.DictReader(StringIO(stop_times_data))
         trips_csv = csv.DictReader(StringIO(trips_data))
@@ -210,8 +218,10 @@ def trip_detail(request, route_id):
                         'direction_id': direction_id,
                         'stops_detail': []
                     }
+            
+        
         except KeyError as e:
-            return Response({'error': f'Missing key in trips data: {e}'}, status= 500)
+            return Response({'error': f'Missing key in trips data: {e}'}, 500)
 
         # Itereting data from stop_times.txt to get departure time and trip_id
         try:   
@@ -224,8 +234,9 @@ def trip_detail(request, route_id):
                     routes[stop_times_trip_id]['stops_detail'].append({
                         'stop_id': stop_times_stop_id,
                     })
+        
         except KeyError as e:
-            return Response({'error': f'Missing key in stop_times data: {e}'}, status= 500)
+            return Response({'error': f'Missing key in stop_times data: {e}'}, 500)
         
         # Make dict with stops
         try:      
@@ -233,40 +244,44 @@ def trip_detail(request, route_id):
                 stop_id = stops['stop_id']
                 stop_name = stops['stop_name']
                 stops_dict[stop_id] = stop_name
+            
         except KeyError as e:
-            return Response({'error': f'Missing key in stops data: {e}'}, status= 500)
-
+            return Response({'error': f'Missing key in stops data: {e}'},  500)
+        
         # Map stop_ids to stop_names
         try: 
             for trip_id, trip_info in routes.items():
                 stop_names = []
                 for detail in trip_info['stops_detail']:
                     stop_id = detail['stop_id']
-                    stop_name = stops_dict.get(stop_id, None)
-                    if stop_name:
+                    if stop_id in stops_dict: 
+                        stop_name = stops_dict[stop_id]
                         stop_names.append({
                             'stop_name': stop_name,
+                            'stop_id': stop_id
                         })
                 routes[trip_id]['stops_detail'] = stop_names
+            
+                
         except KeyError as e:
-            return Response({'error': f'Error mapping stop_ids to stop_names: {e}'}, status= 500)
+            return Response({'error': f'Error mapping stop_ids to stop_names: {e}'}, 500)
         
         # Get sequences of stops
         try:
             sequences = {}    
             for trip_id, trip_data in routes.items():
-
-                # Making a list with stops name 
-                stop_names = []
-                for stop in trip_data['stops_detail']:
-                    stop_name = stop['stop_name']
-                    stop_names.append(stop_name)
-
+                stop_names = trip_data['stops_detail']
+                    
                 # Getting the direction_id from the routes
                 direction_id = trip_data['direction_id']
                     
+                # Making a list with stops name 
+                stop_ids = []
+                for stop in stop_names:
+                    stop_ids.append(stop['stop_id'])
+
                 # Making a tuple to get IDS(stop_ids) for sequence
-                sequence = tuple(stop_names)
+                sequence = tuple(stop_ids)
 
                 if sequence not in sequences:
                     sequences[sequence] = {
@@ -274,35 +289,37 @@ def trip_detail(request, route_id):
                         'trip_ids': [],
                         'stops': stop_names,
                     }
+                
                         
                 sequences[sequence]["trip_ids"].append(trip_id)
         except KeyError as e:
-            return Response({'error': f'Error generating sequences: {e}'}, status= 500)
+            return Response({'error': f'Error generating sequences: {e}'},  500)
 
-        # Tworzenie wzorców i identyfikacja najbardziej popularnego wzoru dla każdego direction_id
+        # Create pattern and identifie as the most popular for each direciton_id
         try:
             patterns_count = {}
             for sequence, data in sequences.items():
                 direction_id = data['direction_id']
                 count = len(data['trip_ids'])
 
-                # Dodanie tylko wzorców, które mają więcej niż 10 powtórzeń
-                if count > 50:
+                # Add patterns that get more than 2 reapets
+                if count > 2:
                     if direction_id not in patterns_count:
                         patterns_count[direction_id] = {
                             'stops': data['stops'],
                             'count': count
                         }
                     else:
-                        # Sprawdzenie, czy aktualny wzór jest bardziej popularny
+                        # Check that the pattren is the most popular
                         if count > patterns_count[direction_id]['count']:
                             patterns_count[direction_id] = {
                                 'stops': data['stops'],
                                 'count': count
                             }
 
-            # Przygotowanie odpowiedzi
+
             response_data = {
+                
                 "route id": route_id,
                 "most_popular_patterns": {}
             }
@@ -312,26 +329,34 @@ def trip_detail(request, route_id):
                 }
         
         except Exception as e:
-            return Response({'error': f'Error creating patterns: {e}'}, status= 500)
+            return Response({'error': f'Error creating patterns: {e}'},  500)
 
-        return Response(response_data)
+        return Response(response_data, 200)
 
     except Exception as e:
         # Handle and log the exception
-        return Response({"error": str(e)}, status=500)
-
+        return Response({"error": str(e)}, 500)
 
 @api_view(['GET'])
-def stops_detail(request, route_id, stop_id):
+def stop_details(request, route_id, stop_id):
 
     def fetch_gtfs_files_from_redis():
         try:
+            # Fetches all keys from Redis, filters out keys ending with ':hash', decodes them to strings, and returns the list of remaining keys.
+            all_keys = client.keys('*')
+            gtfs_keys = []
+            
+            for key in all_keys:
+                decoded_key = key.decode('utf-8')
+                
+                if not decoded_key.endswith(':hash'):
+                    gtfs_keys.append(decoded_key)
 
-            # Fetch all keys from Redis that do not end with ':hash'
-            gtfs_keys = [key.decode('utf-8') for key in client.keys('*') if not key.decode('utf-8').endswith(':hash')]
             return gtfs_keys
+        
         except Exception as e:
-            return {'error': f'Error fetching GTFS files from Redis: {e}'}
+            return {'error': 'There was an error ' + str(e)}
+
 
     def load_gtfs_feed_from_redis(filename):
         try:
@@ -377,30 +402,37 @@ def stops_detail(request, route_id, stop_id):
 
     # Define days of the week
     days_of_week = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-    if day_of_week and day_of_week not in days_of_week:
-        return Response({"error": f"Invalid day of the week. Valid values are: {', '.join(days_of_week)}."}, status=404)
+    if day_of_week is not None:
+        if day_of_week not in days_of_week:
+            return Response({"error": f"Invalid day of the week. Valid values are: {', '.join(days_of_week)}."}, 404)
     
     # Get the current day of the week, if there is no request day
     current_day_of_week = day_of_week or days_of_week[datetime.today().weekday()]
 
     # Fetch GTFS files from Redis
     gtfs_files = fetch_gtfs_files_from_redis()
-    if isinstance(gtfs_files, dict) and 'error' in gtfs_files:
-        return Response(gtfs_files, status=500)
 
     if not gtfs_files:
-        return Response({'message': 'No GTFS files available in Redis.'}, status=404)
+        return Response({'message': 'No GTFS files available in Redis.'}, 404)
 
     # Filter and sort GTFS files based on date extracted from filename
-    gtfs_files_filtered = [f for f in gtfs_files if extract_date_from_filename(f) is not None]
+    gtfs_files_filtered = []
+    for file in gtfs_files:
+        date = extract_date_from_filename(file)
+
+        if date is not None:
+            gtfs_files_filtered.append(file)
+
     gtfs_files_sorted = sorted(gtfs_files_filtered, key=extract_date_from_filename, reverse=True)
 
-    day_dataframes = {day: None for day in days_of_week}
+    day_dataframes = {}
+
+    for day in days_of_week:
+        day_dataframes[day] = None
 
     for gtfs_file in gtfs_files_sorted:
         feed = load_gtfs_feed_from_redis(gtfs_file)
-        if isinstance(feed, dict) and 'error' in feed:
-            return Response(feed, status=500)
+
         if not feed:
             continue
 
@@ -433,132 +465,31 @@ def stops_detail(request, route_id, stop_id):
             break
 
     if day_dataframes[current_day_of_week] is not None:
+
         # Prepare final dataframe for the response
-        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'stop_name', 'start_date']].sort_values(by='departure_time')
-        data = final_df.to_dict(orient='records')
-        return Response(data, status=200)
+        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'stop_name', 'start_date', 'stop_id']].sort_values(by='departure_time')
+        current_day_info = {
+            'current_day': current_day_of_week,
+            'schedules' : final_df.to_dict(orient='records')
+        }
+        response_data = current_day_info
+        return Response(response_data, 200)
     else:
-        return Response({'message': 'No schedule found for the given route and stop.'}, status=404)
-
-'''
-Thats a view for all trips in zip, maybe will be usefull
-
-
-@api_view(['GET'])
-def trip_detail(request, route_id, stop_id):
-#     # --> stops.txt contain stops_id
-
-    try:
-        stop_times_key = 'stop_times.txt'
-        trips_key = 'trips.txt'
-        stops_key = 'stops.txt'
-        
-        try:
-            stop_times_data = client.get(stop_times_key)
-            trips_data = client.get(trips_key)
-            stops_data = client.get(stops_key)
-        except (ConnectionError, TimeoutError) as e:
-            return Response({'error': 'Error retrieving data from the client.'}, status=500)
-
-        try:
-            stop_times_json_data = json.loads(stop_times_data)
-            trips_json_data = json.loads(trips_data)
-            stops_json_data = json.loads(stops_data)
-        except json.JSONDecodeError as e:
-            return Response({'error': 'Error decoding JSON data.'}, status=500)
-
-        routes = {}
-        stops_dict = {}
-
-         # Itereting data from trips.txt to get trip_id
-        try:
-            for trips in trips_json_data:
-                trips_route_id = trips['route_id']
-                if trips_route_id == route_id:
-                    trip_id = trips['trip_id']
-                    routes[trip_id]= []
-        except KeyError as e:
-            return Response({'error': f'Missing key in trips data: {e}'}, status= 500)
-
-        # Itereting data from stop_times.txt to get departure time and trip_id
-        try:   
-            for stop_times in stop_times_json_data:
-                stop_times_trip_id = stop_times['trip_id']
-                stop_times_stop_id = stop_times['stop_id']
-                departure_time = stop_times['departure_time']
-
-                # Check that stop_times_trip_id is the same like in trip_id in routes
-                if stop_times_trip_id in routes:
-
-                    # Adding dict with indetity stop_id and departure_time
-                    routes[stop_times_trip_id].append({
-                        'stop_id': stop_times_stop_id,
-                        'departure_time': departure_time
-                    })
-        except KeyError as e:
-            return Response({'error':f'Missing key in stop_times data: {e}'}, status= 500)
-        
-        # Make dict with stops
-        try:      
-            for stops in stops_json_data:
-                stop_id = stops['stop_id']
-                stop_name = stops['stop_name']
-                stops_dict[stop_id] = stop_name
-        except KeyError as e:
-            return Response({'error':f'Missing key in stops data: {e}'}, status= 500)
-
-        # Map stop_ids to stop_names
-        try: 
-            for trip_id, stop_details in routes.items():
-                stop_names = []
-                for detail in stop_details:
-                    stop_id = detail['stop_id']
-                    departure_time = detail['departure_time']
-                    stop_name = stops_dict.get(stop_id, None)
-                    if stop_name:
-                        stop_names.append({
-                            'stop_name': stop_name,
-                            'stop_id': stop_id,
-                            'departure_time': departure_time
-                            })
-                routes[trip_id] = stop_names
-        except KeyError as e:
-            return Response({'error':f'Error mapping stop_ids to stop_names: {e}'}, status= 500)
-
-
-        # Itereting departure time on stops for trip id 
-        response_data = []
-        for trip_id, stop_details in routes.items():
-            for detail in stop_details:
-                stop_name = detail['stop_name']
-                departure_time = detail['departure_time']
-                response_data.append({
-                    'route_id': route_id,
-                    'stop_name': stop_name,
-                    'departure_time': departure_time
-                })
-
-        return Response(response_data)
-            
-        
-    except Exception as e:
-        # Handle and log the exception
-        return Response({'error': str(e)}, status=500)
-
-'''
-
-
-
-
-
-
+        return Response({'message': 'No schedule found for the given route and stop.'}, 404)
 
 
 # -----------------------------------------------------------------------------TEST API ---------------------------------------------------------------------------------------------------------------
+
+
 @api_view(['GET'])
 def api_test_16(request):
-    route_16 = Route.objects.get(route_id = 16)
+    logger.info('Starting api test')
+    route_16 = Route.objects.get(route_id=16)
     serializer_class = RouteSerializer(route_16)
+    logger.debug('This is a debug message.')
+    logger.info('This is an info message.')
+    logger.warning('This is a warning message.')
+    logger.error('This is an error message.')
     return Response(serializer_class.data)
 
 def api_test_16_rt(request):
@@ -614,9 +545,9 @@ def api_test_RT(request):
             timestamp = json_data['header']['timestamp']
             timestamps.append(timestamp)
         except KeyError:
-            return HttpResponse(f'No timestamp found for key: {key}', status=404)
+            return HttpResponse(f'No timestamp found for key: {key}', 404)
         except json.JSONDecodeError as e:
-            return HttpResponse(f'Error decoding JSON: {str(e)}', status=500)
+            return HttpResponse(f'Error decoding JSON: {str(e)}', 500)
         
     return HttpResponse(', '.join(timestamps))
 

@@ -1,0 +1,47 @@
+
+.route-detail {
+    display: flex; 
+    justify-content: space-around; 
+    list-style-type: none;
+    padding: 0;
+    margin-left: 29%;
+    margin-top: -550px;
+    font-size: 1.5rem;
+
+
+    &.single-index{
+        margin-left: 46%;
+    }
+
+
+    .direction {
+        flex: 1; 
+        margin: 10px; 
+    }
+
+    .stops {
+        padding: 0;
+
+        .stop {
+            margin-bottom: 1rem;
+        }
+    }
+
+    h2{
+        margin-left: -50px;
+
+    }
+    .stopButton {
+        font-family: 'Anticfont' ;
+        background: none; 
+        color: inherit; 
+        border: none; 
+        padding: 0; 
+        cursor: pointer; 
+        text-align: left; 
+        font-size: 24px;
+        &:hover {
+            text-decoration: underline; /* Podkreślenie tekstu po najechaniu */
+        }
+    }
+}
