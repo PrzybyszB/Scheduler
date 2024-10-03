@@ -5,8 +5,8 @@ import { format } from "date-fns";
 import cx from 'classnames'
 
 type Props = {
-  size?: 'bus-digital-clock' | 'tram-digital-clock';
-  shadow?: 'bus-clock-shadow' | 'tram-clock-shadow';
+  size?: 'bus-digital-clock' | 'tram-digital-clock' | 'routes-digital-clock';
+  shadow?: 'bus-clock-shadow' | 'tram-clock-shadow' | 'routes-clock-shadow';
 };
 
 

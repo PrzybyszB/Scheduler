@@ -209,6 +209,33 @@ def check_and_fetch_static_file(url, zip_name):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
+@shared_task
+def check_and_fetch_static_file_when_site_die(zip_file_path, zip_name):
+    try:
+        zip_file_path = '/code/api/GTFS-ZTM/GTFS-ZTM-STATIC/20240924_20240930.zip'
+            
+        with open(zip_file_path, 'rb') as file:
+            file_data = file.read()
+
+        # Store the file name, hash for zip and data inside
+        ttl_in_seconds = 7 * 24 * 3600
+        client.setex(zip_name, ttl_in_seconds, file_data)
+        print(f" {zip_name} saved in Redis.")
+
+        # Przetwarzanie pliku ZIP
+        process_file(file_data, zip_name)
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error while downloading file from URL: {e}")
+
+    except RedisError as e:
+        print(f"Error while working with Redis: {e}")
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
+
 @shared_task 
 @transaction.atomic
 def load_agency():
