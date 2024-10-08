@@ -20,6 +20,6 @@ urlpatterns = [
     path('tram-list/', tram_list, name='tram-list'),
     path('stops-list/', stops_list, name='stop-list'),
     path('<str:route_id>/', trip_detail, name='trip-detail'),
-    path('<str:route_id>/<str:stop_id>/', stop_details, name='stops_detail'),
+    path('<str:route_id>/<str:stop_id>/<str:direction_id>', stop_details, name='stops_detail'),
 
 ]

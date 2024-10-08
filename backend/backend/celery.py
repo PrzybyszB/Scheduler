@@ -15,7 +15,7 @@ zip_file_path = 'backend/api/GTFS-ZTM/GTFS-ZTM-STATIC/20240907_20240930.zip'
 URL_RT_1 = 'https://www.ztm.poznan.pl/pl/dla-deweloperow/getGtfsRtFile?file=trip_updates.pb'
 URL_RT_2 = 'https://www.ztm.poznan.pl/pl/dla-deweloperow/getGtfsRtFile?file=feeds.pb'
 URL_RT_3 = 'https://www.ztm.poznan.pl/pl/dla-deweloperow/getGtfsRtFile?file=vehicle_positions.pb'
-URL_STATIC_1 = 'https://www.ztm.poznan.pl/en/dla-deweloperow/getGTFSFile'
+URL_STATIC_1 = 'https://www.ztm.poznan.pl/pl/dla-deweloperow/getGTFSFile'
 
 
 
@@ -77,8 +77,8 @@ def load_tasks_on_startup(**kwargs):
     # )
 
     chain(
-        check_and_fetch_static_file_when_site_die.si(zip_file_path, '20240907_20240930.zip'),
-        # check_and_fetch_static_file.si(URL_STATIC_1, 'gtfs_static'),
+        # check_and_fetch_static_file_when_site_die.si(zip_file_path, '20240907_20240930.zip'),
+        check_and_fetch_static_file.si(URL_STATIC_1, 'gtfs_static'),
         load_agency.si(),
         load_stops.si(),
         load_routes.si(),

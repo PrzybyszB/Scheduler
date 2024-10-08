@@ -10,7 +10,7 @@ import SideBarNav from "@/components/SideBarNav/SideBarNav";
 type ResponseRouteData = {
     route_id: string;
     most_popular_patterns: {
-        [directionId: string]: {
+        [direction_id: string]: {
             stops: {
                 stop_name: string;
                 stop_id: string;
@@ -47,8 +47,8 @@ const RouteDetail = () => {
     if (isError) return <p>Error fetching data</p>;
     if (!data) return <p>No data found</p>;
     
-    const patterns = Object.entries(data.most_popular_patterns).map(([directionId, { stops }]) => ({
-        directionId,
+    const patterns = Object.entries(data.most_popular_patterns).map(([direction_id, { stops }]) => ({
+        direction_id,
         stops,
     }));
 
@@ -60,7 +60,7 @@ const RouteDetail = () => {
             <div>
                 <ul className={`${styles['route-detail']} ${patterns.length === 1 ? styles['single-index'] : ''}`}>
                     {patterns.map((item) => (
-                        <li key={item.directionId} className={styles['direction']}>
+                        <li key={item.direction_id} className={styles['direction']}>
                             <h2>
                                 <br/>
                                 <br/>
@@ -68,17 +68,19 @@ const RouteDetail = () => {
                                 {item.stops[item.stops.length - 1]?.stop_name}
                             </h2>
                             <br/>
-                            
                                 <ul className={styles['stops']}>
-                                    {item.stops.map((stop) => (
-                                        <li key={stop.stop_id} className={styles['stop']}>
-                                            <button className={styles['stopButton']}>
-                                                {stop.stop_name} 
-                                            </button>
-                                        </li>
-                                    ))}
+                                    
+                                        {item.stops.map((stop) => (
+                                            <li key={stop.stop_id} className={styles['stop']}>
+                                                <Link href={`/${route_id}/${stop.stop_id}/${item.direction_id}`}>
+                                                <button className={styles['stopButton']}>
+                                                    {stop.stop_name} 
+                                                </button>
+                                                </Link>
+                                            </li>
+                                        ))}
+                                    
                                 </ul>
-                            
                         </li>
                     ))}
                 </ul>

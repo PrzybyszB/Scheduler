@@ -41,8 +41,8 @@ class APIRoot(APIView):
             'tram list' : 'api/tram-list',
             'bus list' : 'api/bus-list',
             'stops list' : 'api/stops-list',
-            'schedule for recent day' : '<str:route_id>/<str:stop_id>/',
-            'schedule for request day' : '<str:route_id>/<str:stop_id>/?day=monday',
+            'schedule for recent day' : '<str:route_id>/<str:stop_id>/<str:direction_id>',
+            'schedule for request day' : '<str:route_id>/<str:stop_id>/<str:direction_id>?day=monday',
 
             # Add next endpoints
         })
@@ -186,7 +186,7 @@ def trip_detail(request, route_id):
 
     # Getting data from redis
 
-    logger.info('statring trip_detail')
+    
     try:
         stop_times_key = 'stop_times.txt'
         trips_key = 'trips.txt'
@@ -338,8 +338,7 @@ def trip_detail(request, route_id):
         return Response({"error": str(e)}, 500)
 
 @api_view(['GET'])
-def stop_details(request, route_id, stop_id):
-
+def stop_details(request, route_id, stop_id, direction_id):
     def fetch_gtfs_files_from_redis():
         try:
             # Fetches all keys from Redis, filters out keys ending with ':hash', decodes them to strings, and returns the list of remaining keys.
@@ -401,6 +400,7 @@ def stop_details(request, route_id, stop_id):
     day_of_week = request.GET.get('day', None)
 
     # Define days of the week
+    
     days_of_week = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
     if day_of_week is not None:
         if day_of_week not in days_of_week:
@@ -408,6 +408,9 @@ def stop_details(request, route_id, stop_id):
     
     # Get the current day of the week, if there is no request day
     current_day_of_week = day_of_week or days_of_week[datetime.today().weekday()]
+
+    # Cast direction_id to an integer
+    direction_id = int(direction_id)
 
     # Fetch GTFS files from Redis
     gtfs_files = fetch_gtfs_files_from_redis()
@@ -453,21 +456,20 @@ def stop_details(request, route_id, stop_id):
                 stop_times_on_day = pd.merge(trips_on_day, stop_times_df, on='trip_id')
                 full_schedule = pd.merge(stop_times_on_day, stops_df, on='stop_id')
 
-                # Filter schedule based on the given stop_id and route_id
+                # Filter schedule based on the given variables
                 full_schedule_filtered = full_schedule[
                     (full_schedule['stop_id'] == stop_id) & 
-                    (full_schedule['route_id'] == route_id)
+                    (full_schedule['route_id'] == route_id) &
+                    (full_schedule['direction_id'] == direction_id)
                 ]
-
                 day_dataframes[current_day_of_week] = full_schedule_filtered
 
         if day_dataframes[current_day_of_week] is not None:
             break
 
     if day_dataframes[current_day_of_week] is not None:
-
         # Prepare final dataframe for the response
-        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'stop_name', 'start_date', 'stop_id']].sort_values(by='departure_time')
+        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'stop_name', 'start_date', 'stop_id', 'direction_id']].sort_values(by='departure_time')
         current_day_info = {
             'current_day': current_day_of_week,
             'schedules' : final_df.to_dict(orient='records')
