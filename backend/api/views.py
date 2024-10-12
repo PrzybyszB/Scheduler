@@ -469,7 +469,11 @@ def stop_details(request, route_id, stop_id, direction_id):
 
     if day_dataframes[current_day_of_week] is not None:
         # Prepare final dataframe for the response
-        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'stop_name', 'start_date', 'stop_id', 'direction_id']].sort_values(by='departure_time')
+        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'stop_name', 'start_date', 'stop_id', 'direction_id', 'trip_headsign']].sort_values(by='departure_time')
+
+        # Removes seconds
+        final_df['departure_time'] = pd.to_datetime(final_df['departure_time']).dt.strftime('%H:%M')
+
         current_day_info = {
             'current_day': current_day_of_week,
             'schedules' : final_df.to_dict(orient='records')

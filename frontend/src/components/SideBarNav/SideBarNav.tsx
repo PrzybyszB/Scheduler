@@ -35,7 +35,7 @@ const images: Image[] = [
 
 
 type Props = {
-  theme?: 'tram-nav-side-bar' | 'bus-nav-side-bar' | 'routes-nav-side-bar'
+  theme?: 'tram-nav-side-bar' | 'bus-nav-side-bar' | 'routes-nav-side-bar' | 'stop-nav-side-bar'
 }
 
 const SideBarNav = ({theme}: Props) => {

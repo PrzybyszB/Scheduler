@@ -13,6 +13,8 @@
     text-transform: uppercase;
     border: 1px solid ;
     z-index: 0;
+    margin-top: 20px;
+    margin-bottom: 20px;
     
     &::before{
         content:'';
@@ -41,38 +43,55 @@
         
 }
 
+.days-button.active-day {
+    color: rgb(0, 0, 0);
+    &::before {
+        transform: translateX(0);
+    }
+}
 
 .days-ul {
     display: flex;
-    flex-direction: row; 
-    align-items: flex-start; 
+    justify-content: center;
+    align-items: center ;
     list-style-type: none; 
-    margin-left: 200px; 
-    margin-top: 10px;
     padding: 0;
+    margin: 10px 0;
 }
 
 .days-li {
     margin-right: 30px; 
 }
 
+
+.clock-container {
+    display: flex;
+    align-items: center; /* Wyrównanie w pionie */
+    justify-content: center;
+}
+
 .departure-times {
-    display: grid; 
-    grid-template-columns: repeat(6, 100px) ;
-    justify-content: center; 
+    display: flex; 
+    justify-content: center;
     margin-top: 20px; 
+    gap: 100px;
 
-    h3 {
-        margin: 0; 
-    }
+    .column{
+        display: flex;
+        flex-direction: column;
 
-    p {
-        margin: 0; 
     }
 
     .time-column {
-        font-size: 1.5rem;
-        flex: 1; 
+        font-size: 2rem;
         text-align: center; 
+        margin: 5px 0;
     }
+}
+
+.route-number {
+    font-size: 2rem;
+    text-align: center;   
+    margin-top: 20px;
+    margin-bottom: 40px;
 }
