@@ -18,9 +18,6 @@ from google.transit import gtfs_realtime_pb2
 from google.protobuf.json_format import MessageToJson
 from celery import shared_task
 
-
-# app = Celery('tasks', broker='redis://0.0.0.0:6379/0', backend='redis://0.0.0.0:6379/0')
-
 client = redis.Redis(host='redis')
 
 

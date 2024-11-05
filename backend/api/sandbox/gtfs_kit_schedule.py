@@ -8,7 +8,6 @@ path_to_gtfs = '20240907_20240930.zip'
 # # Load the GTFS data
 feed = gk.feed.read_feed(path_or_url=path_to_gtfs, dist_units='km')
 
-# Wczytywanie plików GTFS
 calendar_df = feed.calendar
 trips_df = feed.trips
 stop_times_df = feed.stop_times

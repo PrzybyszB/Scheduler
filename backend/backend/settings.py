@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_extensions',
     'django_celery_beat',
+    'django_filters',
 
 ]
 
@@ -109,7 +110,7 @@ DATABASES = {
         "NAME": "scheduler_db",
         "USER": "scheduler_user",
         "PASSWORD": "scheduler_password",
-        "HOST": "scheduler_db",
+        "HOST":  "scheduler_db",
         "PORT": "5432",
     }
 }

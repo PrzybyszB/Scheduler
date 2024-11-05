@@ -1,15 +1,14 @@
-from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.contrib.auth.models import User
-from .models import Profile, Premium, Route, Trip, Stop
-from rest_framework import viewsets, generics, status
+from .models import Profile, Premium, Route, Stop
+from rest_framework import generics, status
+from django_filters import rest_framework as filters
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
 # from rest_framework.permissions import IsAuthenticated, AllowAny
-from .serializers import ProfileSerializer, UserSerializer, PremiumSerializer, RouteSerializer, TripSerializer
+from .serializers import ProfileSerializer, UserSerializer, PremiumSerializer, RouteSerializer, StopsSerializer
 from .tasks import client
 from datetime import datetime
 # from .services import stop_id, stop_name
@@ -21,7 +20,7 @@ from io import StringIO
 import os
 import tempfile 
 import logging
-
+import re
 
 logger = logging.getLogger('api')
 
@@ -29,20 +28,21 @@ class APIRoot(APIView):
     def get(self, request, format=None):
         return Response({
             'register': '/api/register/',
-            'profiles list': '/api/profile-list/',
-            'profile detail': '/api/profile/<int:pk>',
+            'profiles list': '/api/profile/list',
+            'profile detail': '/api/profile/user/<int:pk>',
             'user detail': '/api/user/<int:pk>',
-            'users list': '/api/user-list/',
+            'users list': '/api/user/list',
             'premium create': '/api/premium/create',
             'premium delete': '/api/premium/delete/<int:pk>',
             'premium list': '/api/premium/list',
             'cart': '/api/cart/',
-            'transport_detail' : 'api/<str:route_id>', 
-            'tram list' : 'api/tram-list',
-            'bus list' : 'api/bus-list',
-            'stops list' : 'api/stops-list',
-            'schedule for recent day' : '<str:route_id>/<str:stop_id>/<str:direction_id>',
-            'schedule for request day' : '<str:route_id>/<str:stop_id>/<str:direction_id>?day=monday',
+            'transport_detail' : '/api/route/<str:route_id>/', 
+            'tram list' : '/api/tram-list',
+            'bus list' : '/api/bus-list',
+            'stops list' : '/api/stops',
+            'schedule for recent day' : '/api/route/<str:route_id>/stop/<str:stop_id>/direction/<str:direction_id>',
+            'schedule for request day' : '/api/route/<str:route_id>/stop/<str:stop_id>/direction/<str:direction_id>',
+            'search stop' : '/api/stops/?stop_id=<str:stop_id>',
 
             # Add next endpoints
         })
@@ -102,79 +102,360 @@ class PremiumList(generics.ListAPIView):
     serializer_class = PremiumSerializer
     # permission_classes = [AllowAny]
 
-@api_view(["GET"])
-def stops_list(request):
-    stops = Stop.objects.all().order_by('stop_name')
-    stops_list = []
+class StopFilter(filters.FilterSet):
 
-    if not stops.exists():
-        return Response({'error' : 'No stops found' }, 404)
+    # We create own filter to search exactly stop_id
+    stop_id = filters.CharFilter(field_name='stop_id', lookup_expr='exact')
+
+    class Meta:
+        model = Stop
+        fields = ['stop_id']
+
+@api_view(['GET'])
+def stop_detail(request):
+    queryset = Stop.objects.all()
+    stop_filter = StopFilter(request.GET, queryset=queryset)
+    filtered_queryset = stop_filter.qs
+    serializer = StopsSerializer(filtered_queryset, many=True)
+
+    def fetch_gtfs_files_from_redis():
+        try:
+            # Fetches all keys from Redis, filters out keys ending with ':hash', decodes them to strings, and returns the list of remaining keys.
+            all_keys = client.keys('*')
+            gtfs_keys = []
+            
+            for key in all_keys:
+                decoded_key = key.decode('utf-8')
+                
+                if not decoded_key.endswith(':hash'):
+                    gtfs_keys.append(decoded_key)
+
+            return gtfs_keys
+        
+        except Exception as e:
+            return {'error': 'There was an error ' + str(e)}
+
+    def load_gtfs_feed_from_redis(filename):
+        try:
+            file_content = client.get(filename)
+            if file_content:
+
+                # Use a temporary file to handle the GTFS data
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    temp_file.write(file_content)
+                    temp_file_path = temp_file.name
+
+                try:
+
+                    # Load GTFS data from the temporary file
+                    feed = gk.feed.read_feed(path_or_url=temp_file_path, dist_units='km')
+                    return feed
+                except Exception as e:
+                    return {'error': f'Error loading GTFS feed from {temp_file_path}: {e}'}
+                finally:
+
+                    # Remove the temporary file
+                    os.remove(temp_file_path)
+            else:
+                return {'error': f'File {filename} not found in Redis.'}
+        except Exception as e:
+            return {'error': f'Error loading GTFS feed from Redis: {e}'}
     
-    for stop in stops:
-        stop_name = {'stop_name' : stop.stop_name}
-        stops_list.append(stop_name)
+    def extract_date_from_filename(filename):
+        try:
 
-    return Response(stops_list, 200)
+            # Extract date from the filename (e.g., '20240907_20240930.zip')
+            date_str = filename.split('_')[0]
+
+            # Convert string to date object
+            return datetime.strptime(date_str, '%Y%m%d')
+        except ValueError:
+
+            # If the date format is invalid, skip this file
+            return None    
+
+    gtfs_files = fetch_gtfs_files_from_redis()
+    if not gtfs_files:
+        return Response({'message': 'No GTFS files available in Redis.'}, 404)
+
+    gtfs_files_filtered = []
+    for file in gtfs_files:
+        date = extract_date_from_filename(file)
+
+        if date is not None:
+            gtfs_files_filtered.append(file)
+
+    gtfs_files_sorted = sorted(gtfs_files_filtered, key=extract_date_from_filename, reverse=True)
+
+    for gtfs_file in gtfs_files_sorted:
+        feed = load_gtfs_feed_from_redis(gtfs_file)
+        if feed:
+            stop_times_df = feed.stop_times
+            trips_df = feed.trips
+            
+            filtered_by_stops_id = stop_times_df[stop_times_df['stop_id'] == request.GET.get('stop_id')]
+            trip_id_by_stops = pd.merge(filtered_by_stops_id, trips_df, on='trip_id')
+            
+            final_df = trip_id_by_stops[['route_id', 'direction_id']].drop_duplicates()
+            route_direction_list = final_df.to_dict(orient='records')
+
+            response = {
+                'stops_data': serializer.data,
+                'routes': route_direction_list
+                
+            }
+            return Response(response)
+
+    return Response({'message': 'No valid GTFS files found.'}, status=404)
 
 @api_view(["GET"])
 def bus_list(request):
-    try:
-        # Download all Route objects
-        routes = Route.objects.all()
-        bus_ids = []
-
-        if not routes.exists():
-            return Response({'error': 'No routes found'}, 404)
-        
-        # Adding route_id to list
-        for route in routes:
-            route_id = {'route_id': route.route_id}
-            # Bus have 3 elements in name
-            if route_id['route_id'] == '201' or route_id['route_id'] == '202':
-                continue
-            elif len(route_id['route_id']) == 3:
-                bus_ids.append(route_id)
-        
-        if not bus_ids:
-            return Response({'message': 'No bus IDs found with 3 characters'})
-        
-        return Response(bus_ids, 200)
     
-    except Route.DoesNotExist:
-        return Response({'error': 'Route not found'}, status=404)
-    except Exception as e:
-        return Response({'error': str(e)}, 500)
+    def fetch_gtfs_files_from_redis():
+        try:
+            # Fetches all keys from Redis, filters out keys ending with ':hash', decodes them to strings, and returns the list of remaining keys.
+            all_keys = client.keys('*')
+            gtfs_keys = []
+            
+            for key in all_keys:
+                decoded_key = key.decode('utf-8')
+                
+                if not decoded_key.endswith(':hash'):
+                    gtfs_keys.append(decoded_key)
+
+            return gtfs_keys
+        
+        except Exception as e:
+            return {'error': 'There was an error ' + str(e)}
+
+    def load_gtfs_feed_from_redis(filename):
+        try:
+            file_content = client.get(filename)
+            if file_content:
+
+                # Use a temporary file to handle the GTFS data
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    temp_file.write(file_content)
+                    temp_file_path = temp_file.name
+
+                try:
+
+                    # Load GTFS data from the temporary file
+                    feed = gk.feed.read_feed(path_or_url=temp_file_path, dist_units='km')
+                    return feed
+                except Exception as e:
+                    return {'error': f'Error loading GTFS feed from {temp_file_path}: {e}'}
+                finally:
+
+                    # Remove the temporary file
+                    os.remove(temp_file_path)
+            else:
+                return {'error': f'File {filename} not found in Redis.'}
+        except Exception as e:
+            return {'error': f'Error loading GTFS feed from Redis: {e}'}
+    
+    def extract_date_from_filename(filename):
+        try:
+
+            # Extract date from the filename (e.g., '20240907_20240930.zip')
+            date_str = filename.split('_')[0]
+
+            # Convert string to date object
+            return datetime.strptime(date_str, '%Y%m%d')
+        except ValueError:
+
+            # If the date format is invalid, skip this file
+            return None    
+
+    gtfs_files = fetch_gtfs_files_from_redis()
+    if not gtfs_files:
+        return Response({'message': 'No GTFS files available in Redis.'}, 404)
+
+    gtfs_files_filtered = []
+    for file in gtfs_files:
+        date = extract_date_from_filename(file)
+
+        if date is not None:
+            gtfs_files_filtered.append(file)
+
+    gtfs_files_sorted = sorted(gtfs_files_filtered, key=extract_date_from_filename, reverse=True)
+
+    bus_ids = []
+
+    for gtfs_file in gtfs_files_sorted:
+        feed = load_gtfs_feed_from_redis(gtfs_file)
+        if feed:
+            trips_df = feed.trips
+            
+            df_by_route_id = trips_df[['route_id']].drop_duplicates()
+
+            for index, row in df_by_route_id.iterrows():
+                route_id = row['route_id']
+
+                if route_id == '201' or route_id == '202':
+                    continue
+
+                elif len(route_id) == 3:
+                    bus_ids.append(route_id)      
+                
+            response = sorted(set(bus_ids)) 
+        return Response(response)
+    
+    return Response({'message': 'No valid GTFS files found.'}, status=404)
+    
+    # try:
+    #     # Download all Route objects
+    #     trips = Trip.objects.all()
+    #     bus_ids = set()
+    #     logger.info(trips)
+    #     if not trips.exists():
+    #         return Response({'error': 'No trips found'}, 404)
+        
+    #     # Adding route_id to list
+    #     for trip in trips:
+    #         route_id = trip.route.route_id
+            
+    #         # Bus have 3 elements in name
+    #         if route_id == '201' or route_id == '202':
+    #             continue
+    #         elif len(route_id) == 3:
+    #             bus_ids.add(route_id)
+    #     logger.info(bus_ids)
+    #     if not bus_ids:
+    #         return Response({'message': 'No bus IDs found with 3 characters'})
+        
+    #     return Response(list(bus_ids), 200)
+    
+    # except Route.DoesNotExist:
+    #     return Response({'error': 'Route not found'}, status=404)
+    # except Exception as e:
+    #     return Response({'error': str(e)}, 500)
 
 @api_view(["GET"])
 def tram_list(request):
-    try:
-        # Download all Route objects
-        routes = Route.objects.all()
 
-        tram_ids = []
-
-        if not routes.exists():
-            return Response({'error': 'No routes found'}, 404)
-        
-        # Adding route_id to list
-        for route in routes:
-            route_id = {'route_id': route.route_id}
+    def fetch_gtfs_files_from_redis():
+        try:
+            # Fetches all keys from Redis, filters out keys ending with ':hash', decodes them to strings, and returns the list of remaining keys.
+            all_keys = client.keys('*')
+            gtfs_keys = []
             
-            # Tram have 1 or 2 elements in name
-            if len(route_id['route_id']) <= 2:
-                tram_ids.append(route_id)
-            elif route_id['route_id'] == '201' or route_id['route_id'] == '202':
-                tram_ids.append(route_id)
+            for key in all_keys:
+                decoded_key = key.decode('utf-8')
+                
+                if not decoded_key.endswith(':hash'):
+                    gtfs_keys.append(decoded_key)
+
+            return gtfs_keys
         
-        if not tram_ids:
-            return Response({'message': 'No tram IDs found with 3 characters'})
-        
-        return Response(tram_ids, 200)
+        except Exception as e:
+            return {'error': 'There was an error ' + str(e)}
+
+    def load_gtfs_feed_from_redis(filename):
+        try:
+            file_content = client.get(filename)
+            if file_content:
+
+                # Use a temporary file to handle the GTFS data
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    temp_file.write(file_content)
+                    temp_file_path = temp_file.name
+
+                try:
+
+                    # Load GTFS data from the temporary file
+                    feed = gk.feed.read_feed(path_or_url=temp_file_path, dist_units='km')
+                    return feed
+                except Exception as e:
+                    return {'error': f'Error loading GTFS feed from {temp_file_path}: {e}'}
+                finally:
+
+                    # Remove the temporary file
+                    os.remove(temp_file_path)
+            else:
+                return {'error': f'File {filename} not found in Redis.'}
+        except Exception as e:
+            return {'error': f'Error loading GTFS feed from Redis: {e}'}
     
-    except Route.DoesNotExist:
-        return Response({'error': 'Route not found'}, status=404)
-    except Exception as e:
-        return Response({'error': str(e)}, 500)
+    def extract_date_from_filename(filename):
+        try:
+
+            # Extract date from the filename (e.g., '20240907_20240930.zip')
+            date_str = filename.split('_')[0]
+
+            # Convert string to date object
+            return datetime.strptime(date_str, '%Y%m%d')
+        except ValueError:
+
+            # If the date format is invalid, skip this file
+            return None    
+
+    gtfs_files = fetch_gtfs_files_from_redis()
+    if not gtfs_files:
+        return Response({'message': 'No GTFS files available in Redis.'}, 404)
+
+    gtfs_files_filtered = []
+    for file in gtfs_files:
+        date = extract_date_from_filename(file)
+
+        if date is not None:
+            gtfs_files_filtered.append(file)
+
+    gtfs_files_sorted = sorted(gtfs_files_filtered, key=extract_date_from_filename, reverse=True)
+
+    tram_ids = []
+
+    for gtfs_file in gtfs_files_sorted:
+        feed = load_gtfs_feed_from_redis(gtfs_file)
+        if feed:
+            trips_df = feed.trips
+            
+            df_by_route_id = trips_df[['route_id']].drop_duplicates()
+
+            for index, row in df_by_route_id.iterrows():
+                route_id = row['route_id']
+
+                if len(route_id) <= 2:
+                    tram_ids.append(route_id)      
+
+                elif route_id == '201' or route_id == '202':
+                    tram_ids.append(route_id)
+                
+            response = sorted(set(tram_ids), key=lambda x: int(x)) 
+        return Response(response)
+    
+    return Response({'message': 'No valid GTFS files found.'}, status=404)
+
+
+
+    # try:
+    #     # Download all Route objects
+    #     trips = Trip.objects.all()
+
+    #     tram_ids = []
+
+    #     if not trips.exists():
+    #         return Response({'error': 'No trips found'}, 404)
+        
+    #     # Adding route_id to list
+    #     for trip in trips:
+    #         route_id = {'route_id': trip.route.route_id}
+            
+    #         # Tram have 1 or 2 elements in name
+    #         if len(route_id['route_id']) <= 2:
+    #             tram_ids.append(route_id)
+    #         elif route_id['route_id'] == '201' or route_id['route_id'] == '202':
+    #             tram_ids.append(route_id)
+        
+    #     if not tram_ids:
+    #         return Response({'message': 'No tram IDs found with 3 characters'})
+        
+    #     return Response(tram_ids, 200)
+    
+    # except Route.DoesNotExist:
+    #     return Response({'error': 'Route not found'}, status=404)
+    # except Exception as e:
+    #     return Response({'error': str(e)}, 500)
 
 @api_view(['GET'])
 def trip_detail(request, route_id):
@@ -303,7 +584,7 @@ def trip_detail(request, route_id):
                 count = len(data['trip_ids'])
 
                 # Add patterns that get more than 2 reapets
-                if count > 2:
+                if count > 1:
                     if direction_id not in patterns_count:
                         patterns_count[direction_id] = {
                             'stops': data['stops'],
@@ -338,7 +619,7 @@ def trip_detail(request, route_id):
         return Response({"error": str(e)}, 500)
 
 @api_view(['GET'])
-def stop_details(request, route_id, stop_id, direction_id):
+def schedule(request, route_id, stop_id, direction_id):
     def fetch_gtfs_files_from_redis():
         try:
             # Fetches all keys from Redis, filters out keys ending with ':hash', decodes them to strings, and returns the list of remaining keys.
@@ -355,7 +636,6 @@ def stop_details(request, route_id, stop_id, direction_id):
         
         except Exception as e:
             return {'error': 'There was an error ' + str(e)}
-
 
     def load_gtfs_feed_from_redis(filename):
         try:
@@ -395,6 +675,18 @@ def stop_details(request, route_id, stop_id, direction_id):
 
             # If the date format is invalid, skip this file
             return None    
+    
+    # Night routes have time 24:00, 25:00, 26:00, 27:00, 28:00
+    def convert_time(departure_time):
+        pattern = re.compile(r"(2[4-9]):([0-5][0-9])")
+
+        match = pattern.match(departure_time)
+        if match:
+            hour = int(match.group(1))
+            new_hour = hour - 24
+            return f"{new_hour}:{match.group(2)}"
+        
+        return departure_time
     
     # Request day parameter
     day_of_week = request.GET.get('day', None)
@@ -444,7 +736,7 @@ def stop_details(request, route_id, stop_id, direction_id):
         trips_df = feed.trips
         stop_times_df = feed.stop_times
         stops_df = feed.stops
-
+            
         if day_dataframes[current_day_of_week] is None:
 
             # Filter active services based on the current day
@@ -469,14 +761,18 @@ def stop_details(request, route_id, stop_id, direction_id):
 
     if day_dataframes[current_day_of_week] is not None:
         # Prepare final dataframe for the response
-        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'stop_name', 'start_date', 'stop_id', 'direction_id', 'trip_headsign']].sort_values(by='departure_time')
+        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'start_date', 'stop_id', 'direction_id', 'trip_id', 'stop_headsign', 'stop_name']].sort_values(by='departure_time')
 
-        # Removes seconds
-        final_df['departure_time'] = pd.to_datetime(final_df['departure_time']).dt.strftime('%H:%M')
+        # Regex function and removec seconds
+        final_df['departure_time'] = final_df['departure_time'].apply(convert_time).str.slice(0, 5)
+        stop_headsign = final_df['stop_headsign'].iloc[0]
+        stop_name = final_df['stop_name'].iloc[0]
 
         current_day_info = {
             'current_day': current_day_of_week,
-            'schedules' : final_df.to_dict(orient='records')
+            'schedules' : final_df.to_dict(orient='records'),
+            'stop_name': stop_name,
+            'stop_headsign': stop_headsign
         }
         response_data = current_day_info
         return Response(response_data, 200)
@@ -485,78 +781,6 @@ def stop_details(request, route_id, stop_id, direction_id):
 
 
 # -----------------------------------------------------------------------------TEST API ---------------------------------------------------------------------------------------------------------------
-
-
-@api_view(['GET'])
-def api_test_16(request):
-    logger.info('Starting api test')
-    route_16 = Route.objects.get(route_id=16)
-    serializer_class = RouteSerializer(route_16)
-    logger.debug('This is a debug message.')
-    logger.info('This is an info message.')
-    logger.warning('This is a warning message.')
-    logger.error('This is an error message.')
-    return Response(serializer_class.data)
-
-def api_test_16_rt(request):
-    trip_updates_key = 'trip_updates'
-    feeds_key = 'feeds'
-    vehicle_positions_key = 'vehicle_positions'
-
-    trip_update_data = client.get(trip_updates_key)
-    feeds_data = client.get(feeds_key)
-    vehicle_positions_data = client.get(vehicle_positions_key)
-
-    trip_update_json = json.loads(trip_update_data)
-    feeds_json = json.loads(feeds_data)
-    vehicle_positions_json = json.loads(vehicle_positions_data)
-
-    positions = []
-
-
-    for entity_vehicle in vehicle_positions_json['entity']:
-        vehicle = entity_vehicle['vehicle']
-        trip = vehicle['trip']
-        route_id = trip['routeId']
-        
-        if route_id == "16":
-            position = vehicle['position']
-            positions.append(position)
-            
-            # for entity_trip in trip_update_json['entity']:
-            #     trip_update = entity_trip['tripUpdate']
-            #     trip = trip_update['trip']
-            #     trip_route_id = trip['routeId']
-                
-            #     if trip_route_id == "16":
-            #         stopTimeUpdate = trip_update['stopTimeUpdate']
-            #         for stop_update in stopTimeUpdate:
-            #             arrival = stop_update['arrival']
-            #             delay = arrival['delay']
-            #             if entity_vehicle['id'] == entity_trip['id']:
-            #                 break
-        
-    return HttpResponse(f"Hello its me 16 tramwaj and my pozycja :Position: {positions}")
-
-@api_view(['GET'])
-def api_test_RT(request):
-    keys = ['trip_updates', 'feeds', 'vehicle_positions']
-    timestamps = []
-
-    for key in keys:
-        data = client.get(key)
-        
-        try:
-            json_data = json.loads(data)
-            timestamp = json_data['header']['timestamp']
-            timestamps.append(timestamp)
-        except KeyError:
-            return HttpResponse(f'No timestamp found for key: {key}', 404)
-        except json.JSONDecodeError as e:
-            return HttpResponse(f'Error decoding JSON: {str(e)}', 500)
-        
-    return HttpResponse(', '.join(timestamps))
-
 
 def home(request):
     return HttpResponse(f"Hello")

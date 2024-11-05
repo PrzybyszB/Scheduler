@@ -8,11 +8,9 @@ import SideBarNav from "@/components/SideBarNav/SideBarNav";
 import { useRouter } from 'next/router';
 
 
-type ResponseBusData = {
-  route_id: string;
-};
+type BusData = string[];
 
-const fetchBusData = async (): Promise<ResponseBusData[]> => {
+const fetchBusData = async ():  Promise<BusData> => {
   const response = await axios.get("http://localhost:8000/api/bus-list/");
 
   return response.data;
@@ -20,18 +18,25 @@ const fetchBusData = async (): Promise<ResponseBusData[]> => {
 
 function BusList() {
   const router = useRouter();
-  const { data } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["BusNumber"],
     queryFn: fetchBusData,
   });
-  console.log(data);
+  
+  if (isLoading) {
+    return <p>Ładowanie...</p>;
+  }
 
-  if (!data) {
-    return <p>No data found</p>;
+  if (isError) {
+    return <p>Błąd podczas ładowania danych</p>;
+  }
+
+  if (!data || data.length === 0) {
+    return <p>Nie znaleziono takiego autobusu</p>;
   }
 
   const handleButtonClick = (id: string) => {
-    router.push(`/${id}`);
+    router.push(`/route/${id}`);
   };
 
   return (
@@ -40,12 +45,12 @@ function BusList() {
         <DigitalClock size="bus-digital-clock" shadow="bus-clock-shadow" />
       <div className={styles["bus-button-grid"]}>
         {/* Itereting by function map through data. For each element 'route' in table, we create new element TSX*/}
-        {data.map((route) => (
+        {data.map((route_id) => (
           // Create element <button> with unique key assigned to route.route_id. {route.route_id} is a text in the button
-          <button key={route.route_id} 
+          <button key={route_id} 
           className={styles["list-button"]}
-          onClick={() => handleButtonClick(route.route_id)}>
-            {route.route_id}
+          onClick={() => handleButtonClick(route_id)}>
+            {route_id}
           </button>
         ))}
       </div>

@@ -8,8 +8,8 @@ import { fromLonLat } from 'ol/proj';
 
 
 
-const useMap = (onZoomChange = () => {} ) => {
-    const mapRef= useRef(null);
+const useMap = () => {
+    const mapRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (mapRef.current) {
@@ -52,10 +52,10 @@ const useMap = (onZoomChange = () => {} ) => {
 
             return () => {
                 // Clearing map
-                map.setTarget(null);
+                map.setTarget(undefined);
             };
         }
-        },[onZoomChange]);
+        },[]);
 
         return mapRef;
 

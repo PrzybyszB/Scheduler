@@ -22,7 +22,7 @@ type ResponseRouteData = {
 
 
 const fetchRouteData = async (route_id: string): Promise<ResponseRouteData> => {
-    const response = await axios.get(`http://localhost:8000/api/${route_id}/`);
+    const response = await axios.get(`http://localhost:8000/api/route/${route_id}/`);
  
     return response.data;
 };
@@ -43,9 +43,9 @@ const RouteDetail = () => {
         enabled: !!route_id,
     });
 
-    if (isLoading) return <p>Loading...</p>;
-    if (isError) return <p>Error fetching data</p>;
-    if (!data) return <p>No data found</p>;
+    if (isLoading) return <p>Ładownie...</p>;
+    if (isError) return <p>Błąd podczas ładowania danych</p>;
+    if (!data) return <p>Nie znaleziono takiej trasy</p>;
     
     const patterns = Object.entries(data.most_popular_patterns).map(([direction_id, { stops }]) => ({
         direction_id,
@@ -65,14 +65,14 @@ const RouteDetail = () => {
                                 <br/>
                                 <br/>
                                 
-                                {item.stops[item.stops.length - 1]?.stop_name}
+                                {'->'} {item.stops[item.stops.length - 1]?.stop_name}
                             </h2>
                             <br/>
                                 <ul className={styles['stops']}>
                                     
                                         {item.stops.map((stop) => (
                                             <li key={stop.stop_id} className={styles['stop']}>
-                                                <Link href={`/${route_id}/${stop.stop_id}/${item.direction_id}`}>
+                                                <Link href={`/route/${route_id}/stop/${stop.stop_id}/direction/${item.direction_id}`}>
                                                 <button className={styles['stopButton']}>
                                                     {stop.stop_name} 
                                                 </button>

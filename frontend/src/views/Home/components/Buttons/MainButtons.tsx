@@ -23,7 +23,7 @@ const images: Image[] = [
   {
     url: '/Busstop.png',
     title: 'Stops',
-    link: '/stop-list',
+    link: '/stops',
   },
   {
     url: '/Map.png',

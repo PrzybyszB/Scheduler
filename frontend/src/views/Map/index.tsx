@@ -3,6 +3,7 @@ import 'ol/ol.css';
 import useMap from './hooks/useMap';
 import styles from './styles.module.scss'
 
+
 const MapComponent = () => {
     const mapRef = useMap();
 

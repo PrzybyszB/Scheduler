@@ -128,86 +128,8 @@ for trip_id, trip_details in routes.items():
 sorted_departure_times = sorted(departure_times_list)
 # for time in sorted_departure_times:
 #     print(time)    
-'''
-CHAT
 
-
-Pobranie wszystkich plików calendar.txt z Redis: Możesz pobrać wszystkie dostępne pliki z Redis, gdzie każdy plik ma ograniczony TTL do 15 dni. W ten sposób masz dostęp tylko do najnowszych danych.
-
-Łączenie plików: Wczytujesz wszystkie pliki do jednego zbioru danych, np. do listy lub DataFrame (jeśli korzystasz z Pythona i pandas).
-
-Sprawdzanie daty: Wyszukujesz rozkłady, które obejmują dzisiejszą datę (start_date <= dzisiaj <= end_date).
-
-Wybór odpowiednich dni: Jeżeli znajdziesz rozkład dla dzisiejszego dnia, sprawdzasz, czy zawiera on jedynki (1) dla każdego dnia tygodnia. Jeżeli brakuje jedynek dla niektórych dni, wracasz do poprzednich plików i uzupełniasz brakujące dni.
-
-Cofanie się o plik, jeśli brak dni: Jeżeli w jednym pliku brakuje informacji o jakimś dniu tygodnia, pobierasz dane z wcześniejszego pliku, aż znajdziesz pełny zestaw jedynek na cały tydzień.
-
-import redis
-import pandas as pd
-from datetime import datetime
-
-# 1. Połączenie z Redis
-r = redis.Redis(host='localhost', port=6379, db=0)
-
-# 2. Pobranie wszystkich plików calendar.txt z Redis (zakładamy, że pliki są zapisane w formacie CSV)
-calendar_keys = r.keys('calendar*')  # Pobierz klucze, które zawierają calendar.txt
-calendars = []
-
-for key in calendar_keys:
-    csv_data = r.get(key).decode('utf-8')  # Pobierz i zdekoduj dane z Redis
-    df = pd.read_csv(pd.compat.StringIO(csv_data))  # Konwersja CSV na DataFrame
-    calendars.append(df)
-
-# 3. Połączenie wszystkich kalendarzy w jeden DataFrame
-calendar_df = pd.concat(calendars)
-
-# Funkcja sprawdzająca czy data mieści się w przedziale dat
-def is_date_in_range(row, date):
-    start = datetime.strptime(str(row['start_date']), '%Y%m%d')
-    end = datetime.strptime(str(row['end_date']), '%Y%m%d')
-    return start <= date <= end
-
-# 4. Funkcja do pobierania aktywnego service_id na podstawie daty
-def get_service_ids_for_date(date):
-    day_of_week = date.strftime('%A').lower()  # np. 'monday', 'tuesday'
     
-    # Filtracja danych pod kątem daty
-    valid_rows = calendar_df[
-        (calendar_df.apply(is_date_in_range, axis=1, date=date)) &  # Data w zakresie
-        (calendar_df[day_of_week] == 1)  # Odpowiedni dzień tygodnia ma wartość 1
-    ]
-    
-    # Zwraca listę service_id
-    return valid_rows['service_id'].tolist()
-
-# 5. Szukanie pełnego tygodnia z jedynkami
-def get_full_week_schedule(date):
-    current_date = date
-    full_week = {}  # Przechowujemy dni tygodnia z jedynkami
-    
-    # Dni tygodnia w formacie 'monday', 'tuesday' itd.
-    days_of_week = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-    
-    for day in days_of_week:
-        while day not in full_week:
-            service_ids = get_service_ids_for_date(current_date)
-            if service_ids:
-                full_week[day] = service_ids
-            else:
-                # Cofamy się o jeden plik (czyli szukamy wcześniejszych danych)
-                current_date = current_date - timedelta(days=1)
-    
-    return full_week
-
-# 6. Wywołanie funkcji i wyświetlenie rozkładu na cały tydzień
-today = datetime.now()
-schedule = get_full_week_schedule(today)
-print(schedule)
-
-
-'''
-    
-
 '''
 Route_id = 16
 Departure_time = 4:26:00

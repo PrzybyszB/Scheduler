@@ -1,7 +1,8 @@
-django
+Django
 djangorestframework
 django-cors-headers
 djangorestframework-simplejwt
+django-filter
 PyJWT
 pytz
 sqlparse

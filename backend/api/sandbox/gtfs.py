@@ -1,9 +1,8 @@
 import os
 
-# Setting the environment variable DJANGO_SETTINGS_MODULE
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
-# Django environment configuration
 import django
 import pandas as pd
 import csv

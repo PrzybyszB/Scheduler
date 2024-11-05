@@ -6,7 +6,6 @@ from django.core.validators import MinValueValidator
 
 # Create your models here.
 
-# Create a Customer Profile
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.PROTECT)
     first_name = models.CharField(max_length=50)
@@ -21,7 +20,6 @@ class Profile(models.Model):
     def __str__(self):
         return self.user.username
 
-# Create a Customer User
 class Customer(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
@@ -33,7 +31,7 @@ class Customer(models.Model):
     def __str__(self):
         return f'{self.first_name}{self.last_name}'
 
-# Create a premium Variables
+
 class Premium(models.Model):
     name = models.CharField(max_length=100)
     price = models.DecimalField(default=0, decimal_places=2, max_digits=6) #9999.99
@@ -49,12 +47,12 @@ class Premium(models.Model):
     def __str__(self):
         return self.name
 
-# Create a Order Items model
+
 class OrderItem(models.Model):
     name = models.ForeignKey(Premium, on_delete=models.CASCADE)
     price = models.FloatField()
 
-# Create an Order model
+
 class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -120,9 +118,6 @@ class Calendar(models.Model):
 
 class ShapeId(models.Model):
     shape_id = models.CharField(primary_key=True)
-    shape_pt_lat = models.FloatField(null= True, blank=True)
-    shape_pt_lon = models.FloatField(null= True, blank=True)
-    shape_pt_sequence = models.IntegerField(null= True, blank=True)
     
     class Meta:
         ordering = ['shape_id']
