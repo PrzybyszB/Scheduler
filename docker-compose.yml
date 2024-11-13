@@ -19,7 +19,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: bash -c "/backend/run.sh"
+    command: bash -c "/backend/api/scripts/run.sh"
     volumes:
       - ./backend:/backend
     ports:

@@ -3,7 +3,7 @@ version: '3.3'
 services:
   scheduler_db:
     image: postgres:17
-    container_name: scheduler_db_work
+    container_name: scheduler_db
     environment:
       - POSTGRES_DB=scheduler_db
       - POSTGRES_USER=scheduler_user
@@ -19,7 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: bash -c "/backend/api/scripts/run.sh"
+    command: bash -c "sleep 10 && /backend/api/scripts/run.sh"
     volumes:
       - .:/backend
     ports:

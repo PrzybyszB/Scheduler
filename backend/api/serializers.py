@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Profile, Customer, Premium, Stop, Order, Agency, Route, Calendar, Shape, Trip, StopTime, FeedInfo, ShapeId
+from .models import Profile, Customer, Premium, Stop, Order, Agency, Route, Calendar, Shape, Trip, StopTime, FeedInfo, ShapeId, CalendarDate
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -86,6 +86,11 @@ class FeedInfoSerializer(serializers.ModelSerializer):
 class ShapeIdSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShapeId
-        Fields = ["shapeidcreator_id", "shape_id", 'trip_id']
+        Fields = ["shape_id"]
+
+class CalendarDateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalendarDate
+        Fields = ["service_id", "date", 'exception_type']
 
 

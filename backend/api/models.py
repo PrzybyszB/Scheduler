@@ -115,6 +115,17 @@ class Calendar(models.Model):
 
     def __str__(self):
         return self.service_id
+    
+class CalendarDate(models.Model):
+    service = models.ForeignKey(Calendar, on_delete=models.CASCADE)
+    date = models.DateField() 
+    exception_type = models.IntegerField()  
+
+    class Meta:
+        unique_together = ('service', 'date')
+
+    def __str__(self):
+        return self.service
 
 class ShapeId(models.Model):
     shape_id = models.CharField(primary_key=True)
@@ -173,6 +184,7 @@ class FeedInfo(models.Model):
 
     def __str__(self):
         return self.feed_publisher_name
+    
 
 
 

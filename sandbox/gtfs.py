@@ -14,7 +14,7 @@ import zipfile
 import io
 from datetime import datetime
 from django.db import transaction
-from api.models import Agency, Stop, Route, Trip, StopTime, Shape, FeedInfo, Calendar, ShapeId
+from api.models import Agency, Stop, Route, Trip, StopTime, Shape, FeedInfo, Calendar, ShapeId, CalendarDate
 
 
 django.setup()
@@ -59,7 +59,7 @@ def convert_time_format(time_str):
 #             shutil.rmtree(file_path)
 
 # Download and extract GTFS files
-download_and_extract_gtfs(GTFS_URL, GTFS_DIR)
+# download_and_extract_gtfs(GTFS_URL, GTFS_DIR)
 
 @transaction.atomic
 def load_agency():
@@ -176,6 +176,7 @@ def load_routes():
 
 @transaction.atomic
 def load_trips():
+    print(f"Zaczynam Load Trips")
     try:
         # Deleting all records from table
         Trip.objects.all().delete()
@@ -193,12 +194,12 @@ def load_trips():
         with open(file_path, 'r',encoding='utf-8-sig') as csvfile:
             csv_reader = csv.DictReader(csvfile)
             for row in csv_reader:
-                logging.info(f"Loading trip_id: {row.get('trip_id')}")                
                 service = Calendar.objects.get(service_id=row['service_id'])
                 route = Route.objects.get(route_id=row['route_id'])
                 shape_id = ShapeId.objects.get(shape_id=row['shape_id'])
                 shape = Shape.objects.filter(shape_id=shape_id).first()
                 
+
                 Trip.objects.create(
                     trip_id=row['trip_id'],
                     route_id=route,
@@ -217,6 +218,80 @@ def load_trips():
     except Exception as e:
         print(f"Error processing trip_id {row['trip_id']}: {e}")
         raise
+
+'''
+WHEN CALENDAR_DAY TABLE HAS APPEAR
+
+        day_str = ["2024-11-18", "2024-11-25"]
+        calendar_date_1 = datetime.strptime(day_str[0], "%Y-%m-%d").date()
+        calendar_date_2 = datetime.strptime(day_str[1], "%Y-%m-%d").date()
+        print(f"Today date 1 {calendar_date_1}")
+        print(f"Today date 2 {calendar_date_2}")
+        # today_date = datetime.now().date()
+        today_date = datetime.strptime(day_str[0], "%Y-%m-%d").date()
+
+        # Loading files from CSV with 
+        with open(file_path, 'r',encoding='utf-8-sig') as csvfile:
+            csv_reader = csv.DictReader(csvfile)
+            calenadar_dates = CalendarDate.objects.all()
+
+            for calendar_date in calenadar_dates:
+                if calendar_date.date != today_date: #_1 or calendar_date.date != today_date_2 :
+                    print(f"Prawda")
+                    break
+
+            for calendar_date in calenadar_dates:
+                if today_date != calendar_date.date and calendar_date.exception_type == 1:
+                    for row in csv_reader:
+                        service = Calendar.objects.get(service_id=row['service_id'])
+                        if service == calendar_date.service:
+                            continue
+                        else:
+                            print(f"Service_id {service}")
+                            route = Route.objects.get(route_id=row['route_id'])
+                            shape_id = ShapeId.objects.get(shape_id=row['shape_id'])
+                            shape = Shape.objects.filter(shape_id=shape_id).first()
+
+                            Trip.objects.create(
+                                    trip_id=row['trip_id'],
+                                    route_id=route,
+                                    service_id=service,
+                                    trip_headsign=row.get('trip_headsign'),
+                                    wheelchair_accessible=row.get('wheelchair_accessible'),
+                                    direction_id=row.get('direction_id'),
+                                    brigade=row.get('brigade'),
+                                    shape=shape
+                                )
+                elif (today_date == calendar_date_1 or today_date == calendar_date_2) and calendar_date.exception_type == 2:
+                    for row in csv_reader:
+                        service = Calendar.objects.get(service_id=row['service_id'])
+                        if service == calendar_date.service:
+                            continue
+                        else:
+                            print(f"Service_id {service}")
+                            route = Route.objects.get(route_id=row['route_id'])
+                            shape_id = ShapeId.objects.get(shape_id=row['shape_id'])
+                            shape = Shape.objects.filter(shape_id=shape_id).first()
+
+                            Trip.objects.create(
+                                trip_id=row['trip_id'],
+                                route_id=route,
+                                service_id=service,
+                                trip_headsign=row.get('trip_headsign'),
+                                wheelchair_accessible=row.get('wheelchair_accessible'),
+                                direction_id=row.get('direction_id'),
+                                brigade=row.get('brigade'),
+                                shape=shape
+                            )
+                        
+        print("Trips loaded successfully.")
+    except ShapeId.DoesNotExist:
+        print(f"ShapeId with shape_id {row['shape_id']} does not exist")
+        raise
+    except Exception as e:
+        print(f"Error processing trip_id {row['trip_id']}: {e}")
+        raise
+'''
         
 @transaction.atomic
 def load_stop_times():
@@ -269,8 +344,8 @@ def load_stop_times():
 def load_shapes():
     try:
         # Deleting all records from the table
-
         ShapeId.objects.all().delete()
+
         Shape.objects.all().delete()
         
         # Checking GTFS-ZTM existence
@@ -349,7 +424,7 @@ def load_calendar():
     try:
         # Deleting all records from table
         Calendar.objects.all().delete()
-        
+    
         # Checking GTFS-ZTM exist
         if not os.path.exists(GTFS_DIR):
             raise FileNotFoundError(f"Directory {GTFS_DIR} doesn't exist.")
@@ -358,7 +433,7 @@ def load_calendar():
         file_path = os.path.join(GTFS_DIR, 'calendar.txt')
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File {file_path} doesn't exist.")
-        
+
         # Loading files from CSV
         with open(file_path,'r',encoding='utf-8-sig') as csvfile:
             csv_reader = csv.DictReader(csvfile)
@@ -366,18 +441,49 @@ def load_calendar():
             
                 Calendar.objects.create(
                     service_id=row['service_id'],
-                    monday=bool(row['monday']),
-                    tuesday=bool(row['tuesday']),
-                    wednesday=bool(row['wednesday']),
-                    thursday=bool(row['thursday']),
-                    friday=bool(row['friday']),
-                    saturday=bool(row['saturday']),
-                    sunday=bool(row['sunday']),
+                    monday=bool(int(row['monday'])),
+                    tuesday=bool(int(row['tuesday'])),
+                    wednesday=bool(int(row['wednesday'])),
+                    thursday=bool(int(row['thursday'])),
+                    friday=bool(int(row['friday'])),
+                    saturday=bool(int(row['saturday'])),
+                    sunday=bool(int(row['sunday'])),
                     start_date=pd.to_datetime(row['start_date'], format='%Y%m%d').date(),
                     end_date=pd.to_datetime(row['end_date'], format='%Y%m%d').date()
                 )
-
+                
         print("Calendar loaded successfully.")
+    
+    except Exception as e:
+        print(f"There was an error: {e}")
+        raise
+
+@transaction.atomic
+def load_calendar_date():
+    try:
+        # Deleting all records from table
+        CalendarDate.objects.all().delete()
+        
+        # Checking GTFS-ZTM existence
+        if not os.path.exists(GTFS_DIR):
+            raise FileNotFoundError(f"Directory {GTFS_DIR} doesn't exist.")
+        
+        # Checking that the file exists
+        file_path = os.path.join(GTFS_DIR, 'calendar_dates.txt')
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File {file_path} doesn't exist.")
+        
+
+
+        with open(file_path, 'r',encoding='utf-8-sig') as csvfile:
+            csv_reader = csv.DictReader(csvfile)
+            for row in csv_reader:
+                CalendarDate.objects.create(
+                    service_id = row['service_id'],
+                    date =pd.to_datetime(row['date'], format='%Y%m%d').date(),
+                    exception_type=int(row['exception_type'])
+                )
+            print("Calendar dates loaded successfully.")
 
     except Exception as e:
         print(f"There was an error: {e}")
@@ -388,8 +494,9 @@ def load_calendar():
 load_agency()
 load_stops()
 load_routes()
-load_shapes()
+# load_shapes()
 load_calendar()
+load_calendar_date()
 load_feed_info()
 load_trips()
 load_stop_times()

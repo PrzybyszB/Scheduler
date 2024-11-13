@@ -104,7 +104,7 @@ class PremiumList(generics.ListAPIView):
 
 class StopFilter(filters.FilterSet):
 
-    # We create own filter to search exactly stop_id
+    # I create own filter to search exactly stop_id
     stop_id = filters.CharFilter(field_name='stop_id', lookup_expr='exact')
 
     class Meta:
@@ -420,8 +420,9 @@ def tram_list(request):
 
                 elif route_id == '201' or route_id == '202':
                     tram_ids.append(route_id)
-                
-            response = sorted(set(tram_ids), key=lambda x: int(x)) 
+            
+            # Regex is for substitute tramway like T2 or T3
+            response = sorted(set(tram_ids), key=lambda x: int(re.sub(r'\D', '', x)))
         return Response(response)
     
     return Response({'message': 'No valid GTFS files found.'}, status=404)
@@ -736,11 +737,37 @@ def schedule(request, route_id, stop_id, direction_id):
         trips_df = feed.trips
         stop_times_df = feed.stop_times
         stops_df = feed.stops
-            
-        if day_dataframes[current_day_of_week] is None:
+        calendar_dates_df = feed.calendar_dates
+        
+        today_date = datetime.today().date()
 
+        # Check excpetion from calendar_dates
+        if calendar_dates_df is not None and not calendar_dates_df.empty:
+            date_exceptions = calendar_dates_df[calendar_dates_df['date'] == today_date]
+
+            # Check for exceptions
+            active_exceptions = date_exceptions[date_exceptions['exception_type'] == 1]
+            deactivated_exceptions = date_exceptions[date_exceptions['exception_type'] == 2]
+        else:
+            active_exceptions = pd.DataFrame()
+            deactivated_exceptions = pd.DataFrame()
+
+        if day_dataframes[current_day_of_week] is None:
+            
             # Filter active services based on the current day
             active_services = calendar_df[calendar_df[current_day_of_week] == 1]
+
+            # Activate exceptions to active service_id
+            if not active_exceptions.empty:
+                active_services = pd.concat([
+                    active_services,
+                    active_exceptions.merge(calendar_df, on='service_id', how='left')
+                ]).drop_duplicates('service_id')
+
+            # Delete deactivated service_id
+            if not deactivated_exceptions.empty:
+                active_services = active_services[~active_services['service_id'].isin(deactivated_exceptions['service_id'])]
+
             if not active_services.empty:
 
                 # Merge dataframes to get the full schedule
@@ -755,6 +782,7 @@ def schedule(request, route_id, stop_id, direction_id):
                     (full_schedule['direction_id'] == direction_id)
                 ]
                 day_dataframes[current_day_of_week] = full_schedule_filtered
+                
 
         if day_dataframes[current_day_of_week] is not None:
             break
@@ -767,6 +795,7 @@ def schedule(request, route_id, stop_id, direction_id):
         final_df['departure_time'] = final_df['departure_time'].apply(convert_time).str.slice(0, 5)
         stop_headsign = final_df['stop_headsign'].iloc[0]
         stop_name = final_df['stop_name'].iloc[0]
+
 
         current_day_info = {
             'current_day': current_day_of_week,
