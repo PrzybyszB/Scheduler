@@ -66,6 +66,8 @@ INSTALLED_APPS = [
     'django_extensions',
     'django_celery_beat',
     'django_filters',
+    'django_q',
+    
 
 ]
 
@@ -110,7 +112,7 @@ DATABASES = {
         "NAME": "scheduler_db",
         "USER": "scheduler_user",
         "PASSWORD": "scheduler_password",
-        "HOST":  "scheduler_db", #'scheduler_db'
+        "HOST": 'scheduler_db',
         "PORT": "5432",
     }
 }
@@ -161,7 +163,19 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
+# Django-q
+Q_CLUSTER = {
+    'name': 'Scheduler',
+    'workers': 2,
+    'timeout': 60,
+    'batch_size': 10,
+    'django_redis': 'default',
+    'redis': {
+        'host': 'redis://redis:6379/0',
+        'port': 6379,
+        'db': 0,
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -216,6 +230,11 @@ LOGGING = {
         'api': {
             'handlers': ['console'],
             'level': 'INFO', 
+            'propagate': True,
+        },
+        'django_q': {  
+            'handlers': ['console'],
+            'level': 'DEBUG',
             'propagate': True,
         },
     },

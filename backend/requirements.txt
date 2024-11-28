@@ -9,6 +9,8 @@ sqlparse
 pandas
 django-extensions
 requests
+django-q
+
 
 
 # For testing
@@ -22,6 +24,7 @@ Pillow
 
 # For caching/broker
 redis
+redis-tools
 django-redis
 
 # Tasks

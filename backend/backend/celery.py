@@ -25,22 +25,22 @@ app.conf.broker_connection_retry_on_startup = True
 app.conf.beat_schedule = {
     'check_and_fetch_RT_file_URL_RT_1': {
         'task': 'api.tasks.check_and_fetch_RT_file',
-        'schedule': 500000000.0,  # every  500000000 sec
+        'schedule': 5.0,  # every  5 sec
         'args': (URL_RT_1, 'trip_updates'),
     },
     'check_and_fetch_RT_file_URL_RT_2': {
         'task': 'api.tasks.check_and_fetch_RT_file',
-        'schedule':  500000000.0,  # every  500000000 sec
+        'schedule':  5.0,  # every  5 sec
         'args': (URL_RT_2, 'feeds'),
     },
     'check_and_fetch_RT_file_URL_RT_3': {
         'task': 'api.tasks.check_and_fetch_RT_file',
-        'schedule':  500000000.0,  # every  500000000 sec
+        'schedule':  5.0,  # every  5 sec
         'args': (URL_RT_3, 'vehicle_positions'),
     },
     'check_and_fetch_file_URL_STATIC_1': {
         'task': 'api.tasks.check_and_fetch_static_file',
-        'schedule':  500000000.0,  # every  500000000 sec
+        'schedule':  8400.0,  # every  8400 sec
         'args': (URL_STATIC_1, 'gtfs_static'),
     },
 }
