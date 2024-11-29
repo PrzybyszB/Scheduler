@@ -21,6 +21,7 @@ import os
 import tempfile 
 import logging
 import re
+from .services import GTFSService
 
 logger = logging.getLogger('api')
 
@@ -458,6 +459,19 @@ def tram_list(request):
     # except Exception as e:
     #     return Response({'error': str(e)}, 500)
 
+# @api_view(['GET'])
+# def trip_detail(request, route_id):
+#     # Instantiate the service with the necessary route_id
+#     service = GTFSService(route_id=route_id, stop_id=None, direction_id=None, current_day_of_week=None)
+
+#     # Fetch the trip details
+#     trip_data = service.get_trip_details()
+
+#     if trip_data:
+#         return Response(trip_data, 200)
+#     else:
+#         return Response({'message': 'No trip data found for the given route.'}, 404)
+
 @api_view(['GET'])
 def trip_detail(request, route_id):
     # --> trips.txt contain route_id and trips_id --> 
@@ -621,80 +635,10 @@ def trip_detail(request, route_id):
 
 @api_view(['GET'])
 def schedule(request, route_id, stop_id, direction_id):
-    def fetch_gtfs_files_from_redis():
-        try:
-            # Fetches all keys from Redis, filters out keys ending with ':hash', decodes them to strings, and returns the list of remaining keys.
-            all_keys = client.keys('*')
-            gtfs_keys = []
-            
-            for key in all_keys:
-                decoded_key = key.decode('utf-8')
-                
-                if not decoded_key.endswith(':hash'):
-                    gtfs_keys.append(decoded_key)
-
-            return gtfs_keys
-        
-        except Exception as e:
-            return {'error': 'There was an error ' + str(e)}
-
-    def load_gtfs_feed_from_redis(filename):
-        try:
-            file_content = client.get(filename)
-            if file_content:
-
-                # Use a temporary file to handle the GTFS data
-                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                    temp_file.write(file_content)
-                    temp_file_path = temp_file.name
-
-                try:
-
-                    # Load GTFS data from the temporary file
-                    feed = gk.feed.read_feed(path_or_url=temp_file_path, dist_units='km')
-                    return feed
-                except Exception as e:
-                    return {'error': f'Error loading GTFS feed from {temp_file_path}: {e}'}
-                finally:
-
-                    # Remove the temporary file
-                    os.remove(temp_file_path)
-            else:
-                return {'error': f'File {filename} not found in Redis.'}
-        except Exception as e:
-            return {'error': f'Error loading GTFS feed from Redis: {e}'}
-
-    def extract_date_from_filename(filename):
-        try:
-
-            # Extract date from the filename (e.g., '20240907_20240930.zip')
-            date_str = filename.split('_')[0]
-
-            # Convert string to date object
-            return datetime.strptime(date_str, '%Y%m%d')
-        except ValueError:
-
-            # If the date format is invalid, skip this file
-            return None    
-    
-    # Night routes have time 24:00, 25:00, 26:00, 27:00, 28:00
-    def convert_time(departure_time):
-        pattern = re.compile(r"(2[4-9]):([0-5][0-9])")
-
-        match = pattern.match(departure_time)
-        if match:
-            hour = int(match.group(1))
-            new_hour = hour - 24
-            return f"{new_hour}:{match.group(2)}"
-        
-        return departure_time
-    
     # Request day parameter
     day_of_week = request.GET.get('day', None)
-
-    # Define days of the week
-    
     days_of_week = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    
     if day_of_week is not None:
         if day_of_week not in days_of_week:
             return Response({"error": f"Invalid day of the week. Valid values are: {', '.join(days_of_week)}."}, 404)
@@ -705,108 +649,211 @@ def schedule(request, route_id, stop_id, direction_id):
     # Cast direction_id to an integer
     direction_id = int(direction_id)
 
-    # Fetch GTFS files from Redis
-    gtfs_files = fetch_gtfs_files_from_redis()
-
-    if not gtfs_files:
-        return Response({'message': 'No GTFS files available in Redis.'}, 404)
-
-    # Filter and sort GTFS files based on date extracted from filename
-    gtfs_files_filtered = []
-    for file in gtfs_files:
-        date = extract_date_from_filename(file)
-
-        if date is not None:
-            gtfs_files_filtered.append(file)
-
-    gtfs_files_sorted = sorted(gtfs_files_filtered, key=extract_date_from_filename, reverse=True)
-
-    day_dataframes = {}
-
-    for day in days_of_week:
-        day_dataframes[day] = None
-
-    for gtfs_file in gtfs_files_sorted:
-        feed = load_gtfs_feed_from_redis(gtfs_file)
-
-        if not feed:
-            continue
-
-        # Extract dataframes from GTFS feed
-        calendar_df = feed.calendar
-        trips_df = feed.trips
-        stop_times_df = feed.stop_times
-        stops_df = feed.stops
-        calendar_dates_df = feed.calendar_dates
+    # Initialize GTFSService to handle logic
+    gtfs_service = GTFSService(route_id, stop_id, direction_id, current_day_of_week)
+    
+    try:
+        schedule_data = gtfs_service.get_schedule()
         
-        today_date = datetime.today().date()
-
-        # Check excpetion from calendar_dates
-        if calendar_dates_df is not None and not calendar_dates_df.empty:
-            date_exceptions = calendar_dates_df[calendar_dates_df['date'] == today_date]
-
-            # Check for exceptions
-            active_exceptions = date_exceptions[date_exceptions['exception_type'] == 1]
-            deactivated_exceptions = date_exceptions[date_exceptions['exception_type'] == 2]
+        if schedule_data:
+            return Response(schedule_data, 200)
         else:
-            active_exceptions = pd.DataFrame()
-            deactivated_exceptions = pd.DataFrame()
+            return Response({'message': 'No schedule found for the given route and stop.'}, 404)
+    
+    except Exception as e:
+        return Response({'error': f'Unexpected error: {str(e)}'}, 500)
 
-        if day_dataframes[current_day_of_week] is None:
+
+
+
+# @api_view(['GET'])
+# def schedule(request, route_id, stop_id, direction_id):
+#     def fetch_gtfs_files_from_redis():
+#         try:
+#             # Fetches all keys from Redis, filters out keys ending with ':hash', decodes them to strings, and returns the list of remaining keys.
+#             all_keys = client.keys('*')
+#             gtfs_keys = []
             
-            # Filter active services based on the current day
-            active_services = calendar_df[calendar_df[current_day_of_week] == 1]
+#             for key in all_keys:
+#                 decoded_key = key.decode('utf-8')
+                
+#                 if not decoded_key.endswith(':hash'):
+#                     gtfs_keys.append(decoded_key)
 
-            # Activate exceptions to active service_id
-            if not active_exceptions.empty:
-                active_services = pd.concat([
-                    active_services,
-                    active_exceptions.merge(calendar_df, on='service_id', how='left')
-                ]).drop_duplicates('service_id')
+#             return gtfs_keys
+        
+#         except Exception as e:
+#             return {'error': 'There was an error ' + str(e)}
 
-            # Delete deactivated service_id
-            if not deactivated_exceptions.empty:
-                active_services = active_services[~active_services['service_id'].isin(deactivated_exceptions['service_id'])]
+#     def load_gtfs_feed_from_redis(filename):
+#         try:
+#             file_content = client.get(filename)
+#             if file_content:
 
-            if not active_services.empty:
+#                 # Use a temporary file to handle the GTFS data
+#                 with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+#                     temp_file.write(file_content)
+#                     temp_file_path = temp_file.name
 
-                # Merge dataframes to get the full schedule
-                trips_on_day = pd.merge(active_services, trips_df, on='service_id')
-                stop_times_on_day = pd.merge(trips_on_day, stop_times_df, on='trip_id')
-                full_schedule = pd.merge(stop_times_on_day, stops_df, on='stop_id')
+#                 try:
 
-                # Filter schedule based on the given variables
-                full_schedule_filtered = full_schedule[
-                    (full_schedule['stop_id'] == stop_id) & 
-                    (full_schedule['route_id'] == route_id) &
-                    (full_schedule['direction_id'] == direction_id)
-                ]
-                day_dataframes[current_day_of_week] = full_schedule_filtered
+#                     # Load GTFS data from the temporary file
+#                     feed = gk.feed.read_feed(path_or_url=temp_file_path, dist_units='km')
+#                     return feed
+#                 except Exception as e:
+#                     return {'error': f'Error loading GTFS feed from {temp_file_path}: {e}'}
+#                 finally:
+
+#                     # Remove the temporary file
+#                     os.remove(temp_file_path)
+#             else:
+#                 return {'error': f'File {filename} not found in Redis.'}
+#         except Exception as e:
+#             return {'error': f'Error loading GTFS feed from Redis: {e}'}
+
+#     def extract_date_from_filename(filename):
+#         try:
+
+#             # Extract date from the filename (e.g., '20240907_20240930.zip')
+#             date_str = filename.split('_')[0]
+
+#             # Convert string to date object
+#             return datetime.strptime(date_str, '%Y%m%d')
+#         except ValueError:
+
+#             # If the date format is invalid, skip this file
+#             return None    
+    
+#     # Night routes have time 24:00, 25:00, 26:00, 27:00, 28:00
+#     def convert_time(departure_time):
+#         pattern = re.compile(r"(2[4-9]):([0-5][0-9])")
+
+#         match = pattern.match(departure_time)
+#         if match:
+#             hour = int(match.group(1))
+#             new_hour = hour - 24
+#             return f"{new_hour}:{match.group(2)}"
+        
+#         return departure_time
+    
+#     # Request day parameter
+#     day_of_week = request.GET.get('day', None)
+
+#     # Define days of the week
+    
+#     days_of_week = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+#     if day_of_week is not None:
+#         if day_of_week not in days_of_week:
+#             return Response({"error": f"Invalid day of the week. Valid values are: {', '.join(days_of_week)}."}, 404)
+    
+#     # Get the current day of the week, if there is no request day
+#     current_day_of_week = day_of_week or days_of_week[datetime.today().weekday()]
+
+#     # Cast direction_id to an integer
+#     direction_id = int(direction_id)
+
+#     # Fetch GTFS files from Redis
+#     gtfs_files = fetch_gtfs_files_from_redis()
+
+#     if not gtfs_files:
+#         return Response({'message': 'No GTFS files available in Redis.'}, 404)
+
+#     # Filter and sort GTFS files based on date extracted from filename
+#     gtfs_files_filtered = []
+#     for file in gtfs_files:
+#         date = extract_date_from_filename(file)
+
+#         if date is not None:
+#             gtfs_files_filtered.append(file)
+
+#     gtfs_files_sorted = sorted(gtfs_files_filtered, key=extract_date_from_filename, reverse=True)
+
+#     day_dataframes = {}
+
+#     for day in days_of_week:
+#         day_dataframes[day] = None
+
+#     for gtfs_file in gtfs_files_sorted:
+#         feed = load_gtfs_feed_from_redis(gtfs_file)
+
+#         if not feed:
+#             continue
+
+#         # Extract dataframes from GTFS feed
+#         calendar_df = feed.calendar
+#         trips_df = feed.trips
+#         stop_times_df = feed.stop_times
+#         stops_df = feed.stops
+#         calendar_dates_df = feed.calendar_dates
+        
+#         today_date = datetime.today().date()
+
+#         # Check excpetion from calendar_dates
+#         if calendar_dates_df is not None and not calendar_dates_df.empty:
+#             date_exceptions = calendar_dates_df[calendar_dates_df['date'] == today_date]
+
+#             # Check for exceptions
+#             active_exceptions = date_exceptions[date_exceptions['exception_type'] == 1]
+#             deactivated_exceptions = date_exceptions[date_exceptions['exception_type'] == 2]
+#         else:
+#             active_exceptions = pd.DataFrame()
+#             deactivated_exceptions = pd.DataFrame()
+
+#         if day_dataframes[current_day_of_week] is None:
+            
+#             # Filter active services based on the current day
+#             active_services = calendar_df[calendar_df[current_day_of_week] == 1]
+
+#             # Activate exceptions to active service_id
+#             if not active_exceptions.empty:
+#                 active_services = pd.concat([
+#                     active_services,
+#                     active_exceptions.merge(calendar_df, on='service_id', how='left')
+#                 ]).drop_duplicates('service_id')
+
+#             # Delete deactivated service_id
+#             if not deactivated_exceptions.empty:
+#                 active_services = active_services[~active_services['service_id'].isin(deactivated_exceptions['service_id'])]
+
+#             if not active_services.empty:
+
+#                 # Merge dataframes to get the full schedule
+#                 trips_on_day = pd.merge(active_services, trips_df, on='service_id')
+#                 stop_times_on_day = pd.merge(trips_on_day, stop_times_df, on='trip_id')
+#                 full_schedule = pd.merge(stop_times_on_day, stops_df, on='stop_id')
+
+#                 # Filter schedule based on the given variables
+#                 full_schedule_filtered = full_schedule[
+#                     (full_schedule['stop_id'] == stop_id) & 
+#                     (full_schedule['route_id'] == route_id) &
+#                     (full_schedule['direction_id'] == direction_id)
+#                 ]
+#                 day_dataframes[current_day_of_week] = full_schedule_filtered
                 
 
-        if day_dataframes[current_day_of_week] is not None:
-            break
+#         if day_dataframes[current_day_of_week] is not None:
+#             break
 
-    if day_dataframes[current_day_of_week] is not None:
-        # Prepare final dataframe for the response
-        final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'start_date', 'stop_id', 'direction_id', 'trip_id', 'stop_headsign', 'stop_name']].sort_values(by='departure_time')
+#     if day_dataframes[current_day_of_week] is not None:
+#         # Prepare final dataframe for the response
+#         final_df = day_dataframes[current_day_of_week][['route_id', 'departure_time', 'start_date', 'stop_id', 'direction_id', 'trip_id', 'stop_headsign', 'stop_name']].sort_values(by='departure_time')
 
-        # Regex function and removec seconds
-        final_df['departure_time'] = final_df['departure_time'].apply(convert_time).str.slice(0, 5)
-        stop_headsign = final_df['stop_headsign'].iloc[0]
-        stop_name = final_df['stop_name'].iloc[0]
+#         # Regex function and removec seconds
+#         final_df['departure_time'] = final_df['departure_time'].apply(convert_time).str.slice(0, 5)
+#         stop_headsign = final_df['stop_headsign'].iloc[0]
+#         stop_name = final_df['stop_name'].iloc[0]
 
 
-        current_day_info = {
-            'current_day': current_day_of_week,
-            'schedules' : final_df.to_dict(orient='records'),
-            'stop_name': stop_name,
-            'stop_headsign': stop_headsign
-        }
-        response_data = current_day_info
-        return Response(response_data, 200)
-    else:
-        return Response({'message': 'No schedule found for the given route and stop.'}, 404)
+#         current_day_info = {
+#             'current_day': current_day_of_week,
+#             'schedules' : final_df.to_dict(orient='records'),
+#             'stop_name': stop_name,
+#             'stop_headsign': stop_headsign
+#         }
+#         response_data = current_day_info
+#         return Response(response_data, 200)
+#     else:
+#         return Response({'message': 'No schedule found for the given route and stop.'}, 404)
 
 
 # -----------------------------------------------------------------------------TEST API ---------------------------------------------------------------------------------------------------------------
