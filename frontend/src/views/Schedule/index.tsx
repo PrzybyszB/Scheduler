@@ -1,102 +1,42 @@
 import { useRouter } from 'next/router';
-import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
 import styles from "./styles.module.scss";
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import ButtonAppBar from "@/components/Appbar/Appbar";
 import DigitalClock from "../../components/DigitalClock/DigitalClock";
+import getPolishDay from './hooks/getPolishDay';
+import useFetchSchedule from './hooks/useFetchSchedule';
+import useDayNavigation from './hooks/useDayNavigation';
 
-
-type ResponseScheduleData = {
-    current_day: string;
-    schedules: Array<{
-        route_id: string;
-        departure_time: string;
-        stop_id: string;
-        start_date: string;
-        direction_id: string;
-    }>;
-    stop_name: string;
-    stop_headsign: string;
-};
-
-const fetchScheduleData = async (route_id: string, stop_id: string, direction_id: string, day: string): Promise<ResponseScheduleData> => {
-    const response = await axios.get(`http://localhost:8000/api/route/${route_id}/stop/${stop_id}/direction/${direction_id}`, {
-        params: { day } 
-    });
-
-    return response.data;
-};
-
-const getPolishDay = (day: string): string => {
-    const daysMap: { [key: string]: string } = {
-        'monday': 'Poniedziałek',
-        'tuesday': 'Wtorek',
-        'wednesday': 'Środa',
-        'thursday': 'Czwartek',
-        'friday': 'Piątek',
-        'saturday': 'Sobota',
-        'sunday': 'Niedziela'
-    };
-    return daysMap[day] || day;
-};
-
-
+import useCurrentDay from './hooks/useCurrentDay';
 
 const ScheduleDetail = () => {
     const router = useRouter();
     const { route_id, stop_id, direction_id } = router.query;
 
     // State for current selected day
-    const [selectedDay, setSelectedDay] = useState<string>('');
+    const [selectedDay, setSelectedDay] = useCurrentDay();
 
-    const { data, isError, isLoading, refetch } = useQuery({
-        queryKey: ['schedule', route_id, stop_id, direction_id, selectedDay],
-        queryFn: () => {
-            if (
-                route_id && 
-                stop_id && 
-                direction_id && 
-                typeof route_id === 'string' && 
-                typeof stop_id === 'string' && 
-                typeof direction_id === 'string'
-            ) {
-                return fetchScheduleData(route_id, stop_id, direction_id, selectedDay);
-            } else {
-                return Promise.reject('That data does not exist');
-            }
-        },
-        enabled: !!(route_id && stop_id && direction_id && selectedDay),
-    });
+    const handleDayClick = useDayNavigation(route_id as string, stop_id as string, direction_id as string, setSelectedDay);
 
-    // Set the current day on load
-    useEffect(() => {
-        const today = new Date();
-        const day = today.toLocaleString('en-US', { weekday: 'long' }).toLowerCase();
+    const { data, isError, isLoading, refetch } = useFetchSchedule(route_id as string, stop_id as string, direction_id as string, selectedDay)
 
-        // Set the current day
-        setSelectedDay(day);
-    }, []);
+    const daysInWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const polishDays = daysInWeek.map((day) => ({
+        day,
+        label: getPolishDay(day),
+    }));
 
     useEffect(() => {
         if (selectedDay) {
-            refetch();
+          refetch();
         }
-    }, [selectedDay, refetch]);
-
-    const handleDayClick = (day: string) => {
-        setSelectedDay(day);
-        router.push(`/route/${route_id}/stop/${stop_id}/direction/${direction_id}?day=${day}`);
-    };
-
+      }, [selectedDay, refetch]);
+    
     if (isLoading) return <p>Ładowanie...</p>;
     if (isError) return <p>Błąd podczas ładowania danych</p>;
     if (!data) {
         return <p>Nie znaleziono takiego rozkładu jazdy</p>;
     }
-
-
-    const daysInWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
     const sixth = Math.ceil(data.schedules.length / 6);
     const firstColumn = data.schedules.slice(0, sixth);
@@ -117,10 +57,10 @@ const ScheduleDetail = () => {
             </div>
             <div>
                 <ul className={styles['days-ul']}>
-                    {daysInWeek.map((day) => (
+                    {polishDays.map(({day, label}) => (
                         <li key={day} className={styles['days-li']}>
                             <button className={`${styles['days-button']} ${selectedDay === day ? styles['active-day'] : ''}`} onClick={() => handleDayClick(day)}>
-                                <h1>{getPolishDay(day)}</h1>
+                                <h1>{label}</h1>
                             </button>
                         </li>
                     ))}
@@ -187,4 +127,3 @@ const ScheduleDetail = () => {
     );
 }
 export default ScheduleDetail;
-

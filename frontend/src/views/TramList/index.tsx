@@ -1,45 +1,21 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import ButtonAppBar from "@/components/Appbar/Appbar";
 import styles from "./styles.module.scss";
 import DigitalClock from "../../components/DigitalClock/DigitalClock";
 import SideBarNav from "@/components/SideBarNav/SideBarNav";
 import { useRouter } from 'next/router';
+import useFetchTramData from "./hooks/useFetchTramList";
+import useHandleButtonClick from "./hooks/useHandleButtonClick";
 
-type TramData = string[];
-
-const fetchTramData = async (): Promise<TramData> => {
-  const response = await axios.get("http://localhost:8000/api/tram-list/");
-
-  return response.data;
-};
-
-
-
-function TramList() {
+const TramList = () => {
   const router = useRouter();
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["TramNumber"],
-    queryFn: fetchTramData,
-  });
-  
-  if (isLoading) {
-    return <p>Ładowanie...</p>;
-  }
+  const { data, isLoading, isError } = useFetchTramData();
 
-  if (isError) {
-    return <p>Błąd podczas ładowania dannych</p>;
-  }
-
-  if (!data || data.length === 0) {
-    return <p>Nie znaleziono takiego tramwaju</p>;
-  }
+  const handleButtonClick = useHandleButtonClick();
   
-  const handleButtonClick = (id: string) => {
-    router.push(`route/${id}/`);
-  };
-  
+  if (isLoading) return <p>Ładowanie...</p>;
+  if (isError) return <p>Błąd podczas ładowania danych</p>;
+  if (!data || data.length === 0) return <p>Nie znaleziono takiego tramwaju</p>;
 
   return (
     <>

@@ -6,7 +6,7 @@ Currently:
 - You can check the active bus lines and their routes.
 - The timetable for each stop is available for the entire week.
 - You can also search for a stop and see its location on the map. 
-The backend is built with Django, Celery, Redis, and PostgreSQL, while the frontend is build in Next.js. Come and visit http://srv28.mikr.us:20361/
+The backend is built with Django, Celery, Redis, and PostgreSQL, while the frontend is build in Next.js. Come and visit http://srv14.mikr.us:20361/
 
 ## Features
 
@@ -57,12 +57,10 @@ The backend is built with Django, Celery, Redis, and PostgreSQL, while the front
 2. Navigate to the project directory:
 
     ```
-    cd Scheduler/backend
+    cd Scheduler
     ```
 
-3. Make sure that the time for downloading files is set to the desired value in celery.py
-
-4. Run the application using Docker Compose:
+3. Run the application using Docker Compose:
 
     ```
     docker-compose up --build

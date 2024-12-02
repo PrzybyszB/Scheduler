@@ -1,43 +1,21 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import styles from "./styles.module.scss";
 import ButtonAppBar from "@/components/Appbar/Appbar";
 import DigitalClock from "../../components/DigitalClock/DigitalClock";
 import SideBarNav from "@/components/SideBarNav/SideBarNav";
 import { useRouter } from 'next/router';
+import useFetchBusData from "./hooks/useFetchBusList";
+import useHandleButtonClick from "./hooks/useHandleButtonClick";
 
-
-type BusData = string[];
-
-const fetchBusData = async ():  Promise<BusData> => {
-  const response = await axios.get("http://localhost:8000/api/bus-list/");
-
-  return response.data;
-};
-
-function BusList() {
+const BusList = () => {
   const router = useRouter();
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["BusNumber"],
-    queryFn: fetchBusData,
-  });
-  
-  if (isLoading) {
-    return <p>Ładowanie...</p>;
-  }
+  const { data, isLoading, isError } = useFetchBusData();
 
-  if (isError) {
-    return <p>Błąd podczas ładowania danych</p>;
-  }
+  const handleButtonClick = useHandleButtonClick();
 
-  if (!data || data.length === 0) {
-    return <p>Nie znaleziono takiego autobusu</p>;
-  }
-
-  const handleButtonClick = (id: string) => {
-    router.push(`/route/${id}`);
-  };
+  if (isLoading) return <p>Ładowanie...</p>;
+  if (isError) return <p>Błąd podczas ładowania danych</p>;
+  if (!data || data.length === 0) return <p>Nie znaleziono takiego autobusu</p>;
 
   return (
     <>
