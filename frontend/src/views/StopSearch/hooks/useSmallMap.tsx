@@ -17,7 +17,6 @@ const useSmallMap = (stop_lon: number, stop_lat: number) => {
         if (mapRef.current) {
             const initialCenter = fromLonLat([stop_lon, stop_lat]);
 
-            // Tworzenie mapy
             const map = new Map({
                 target: mapRef.current,
                 layers: [
@@ -39,16 +38,16 @@ const useSmallMap = (stop_lon: number, stop_lat: number) => {
                 }),
             });
 
-            
+
             const iconFeature = new Feature({
                 geometry: new Point(fromLonLat([stop_lon, stop_lat])),
             });
 
             const iconStyle = new Style({
                 image: new Icon({
-                    anchor: [0.5, 0.8], 
-                    src: '/red_pointer.png', 
-                    scale: 0.1, 
+                    anchor: [0.5, 0.8],
+                    src: '/red_pointer.png',
+                    scale: 0.1,
                 }),
             });
 

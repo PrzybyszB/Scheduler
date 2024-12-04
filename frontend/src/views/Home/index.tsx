@@ -10,10 +10,10 @@ const Home = () => {
     <>
       <ButtonAppBar />
       <div className={styles['digital-clock']}>
-        <DigitalClock/>
+        <DigitalClock />
       </div>
       <div className={styles['home-buttons']}>
-        <HomeButton/>
+        <HomeButton />
       </div>
     </>
   );

@@ -1,5 +1,4 @@
-
-.list-button{
+.list-button {
     background-color: hsl(0, 0%, 0%);
     border-color: hsl(0, 0%, 100%);
     font-size: 26px;
@@ -15,9 +14,9 @@
     text-transform: uppercase;
     border: 1px solid;
     z-index: 0;
-    
-    &::before{
-        content:'';
+
+    &::before {
+        content: '';
         position: absolute;
         top: 0;
         right: 0;
@@ -29,28 +28,27 @@
         transition: transform 0.3s ease;
         z-index: -1;
 
-        
+
     }
-    
-    &:hover{
-        
+
+    &:hover {
+
         color: rgb(0, 0, 0);
 
-        &::before{
+        &::before {
             transform: translateX(0);
         }
-    
-}
-        
+
+    }
+
 }
 
 
 .bus-button-grid {
     display: grid;
-    grid-template-columns: repeat(9, 100px) ;
+    grid-template-columns: repeat(9, 100px);
     gap: 30px;
     padding: 5%;
     margin-left: 9%;
 
 }
-

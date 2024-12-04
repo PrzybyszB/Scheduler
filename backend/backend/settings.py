@@ -46,10 +46,6 @@ SIMPLE_JWT = {
 
 
 
-
-
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -237,5 +233,9 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
-    },
+        # 'django.db.backends': {
+        # 'level': 'DEBUG',
+        # 'handlers': ['console'],
+        # },
+    }
 }

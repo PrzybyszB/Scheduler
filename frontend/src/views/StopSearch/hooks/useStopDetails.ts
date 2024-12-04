@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import axios from "axios";
 import { StopData, RouteData } from "../types";
+import apiClient from "@/services/apiClient/client";
 
 type StopDetailsResponse = {
   stops_data: StopData[];
@@ -9,7 +9,7 @@ type StopDetailsResponse = {
 };
 
 const fetchStopDetails = async (stop_id: string): Promise<StopDetailsResponse> => {
-  const response = await axios.get(`http://localhost:8000/api/stops/?stop_id=${stop_id}`);
+  const response = await apiClient.get(`/stops/?stop_id=${stop_id}`);
   return response.data;
 };
 

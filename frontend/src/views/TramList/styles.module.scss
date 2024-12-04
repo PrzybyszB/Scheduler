@@ -1,5 +1,4 @@
-
-.list-button{
+.list-button {
     background-color: rgb(0, 0, 0);
     font-size: 2rem;
     color: hsl(0, 0%, 100%);
@@ -12,11 +11,11 @@
     display: block;
     overflow: hidden;
     text-transform: uppercase;
-    border: 1px solid ;
+    border: 1px solid;
     z-index: 0;
-    
-    &::before{
-        content:'';
+
+    &::before {
+        content: '';
         position: absolute;
         top: 0;
         right: 0;
@@ -27,25 +26,25 @@
         transition: transform 0.3s ease;
         z-index: -1;
 
-        
+
     }
-    
-    &:hover{
-        
+
+    &:hover {
+
         color: rgb(0, 0, 0);
 
-        &::before{
+        &::before {
             transform: translateX(0);
         }
-    
-}
-        
+
+    }
+
 }
 
 
 .tram-button-grid {
     display: grid;
-    grid-template-columns: repeat(6, 100px) ;
+    grid-template-columns: repeat(6, 100px);
     gap: 60px;
     margin-left: 23%;
     margin-top: 5%;

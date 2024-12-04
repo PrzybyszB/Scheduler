@@ -37,22 +37,22 @@ const HomeButton = () => {
     <div className={styles['container']}>
       {images.map((image) => (
         <Link className={styles['image-button']}
-          key={image.title} 
-          href={image.link} 
+          key={image.title}
+          href={image.link}
           passHref>
-            <span
-              className={styles['image-src']}
-              style={{ backgroundImage: `url(${image.url})` }}/>
-            <span className={styles['image-backdrop']} />
-            <span className={styles['image']}>
-              <span className={styles['typography']}>
-              </span>
+          <span
+            className={styles['image-src']}
+            style={{ backgroundImage: `url(${image.url})` }} />
+          <span className={styles['image-backdrop']} />
+          <span className={styles['image']}>
+            <span className={styles['typography']}>
             </span>
-        </Link> 
+          </span>
+        </Link>
       ))}
     </div>
   );
 }
 
 
-export default HomeButton ;
+export default HomeButton;

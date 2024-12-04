@@ -5,9 +5,9 @@ const usePatterns = (route_id: string) => {
 
     const patterns = data
         ? Object.entries(data.most_popular_patterns).map(([direction_id, { stops }]) => ({
-              direction_id,
-              stops,
-          }))
+            direction_id,
+            stops,
+        }))
         : [];
 
     return { patterns, isError, isLoading };

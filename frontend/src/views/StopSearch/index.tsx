@@ -8,9 +8,10 @@ import useFetchStops from "./hooks/useFetchStops";
 import useStopDetails from "./hooks/useStopDetails";
 import useFilteredStops from "./hooks/useFilteredStops";
 import useHandleStopClick from "./hooks/useHandleStopClick";
-import SmallMap from "./components/SmallMap"; 
+import SmallMap from "./components/SmallMap";
 import styles from "./styles.module.scss";
 import getUniqueRoutes from "./services/getUniqueRoutes";
+import Loader from "@/components/Loader/Loader";
 
 const StopSearch = () => {
   const router = useRouter();
@@ -37,7 +38,7 @@ const StopSearch = () => {
     setNewSearch(event.target.value);
   };
 
-  if (isLoading) return <p>Ładowanie...</p>;
+  if (isLoading) return <Loader/>;
   if (isError) return <p>Błąd podczas ładowania danych</p>;
   if (!data) return <p>Nie znaleziono takiego przystanku</p>;
 
@@ -88,7 +89,7 @@ const StopSearch = () => {
                 <p>Strefa: {selectedStop.zone_id}</p>
               </div>
               <div>
-              <SmallMap
+                <SmallMap
                   lat={parseFloat(selectedStop?.stop_lat || "0")}
                   lon={parseFloat(selectedStop?.stop_lon || "0")}
                 />

@@ -1,22 +1,23 @@
-.search-container{
+.search-container {
     position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
     bottom: 140px;
 
-    input, button {
-        box-sizing: border-box; 
+    input,
+    button {
+        box-sizing: border-box;
     }
 
-    input{
-        width:500px;
+    input {
+        width: 500px;
         height: 45px;
         padding: 10px;
         font-size: 2rem;
         border: 1px solid;
         cursor: pointer;
-        border-color:hsl(0, 0%, 100%);
+        border-color: hsl(0, 0%, 100%);
         font-family: 'Anticfont';
         position: relative;
         border-radius: 5px;
@@ -24,29 +25,31 @@
         color: hsl(0, 0%, 100%);
         box-sizing: border-box;
 
-        &::placeholder{
+        &::placeholder {
             color: hsl(0, 0%, 100%);
         }
+
         &:hover {
-            background-color: white; 
-            color: hsl(0, 0%, 0%); 
-            border-color: hsl(0, 0%, 100%); 
+            background-color: white;
+            color: hsl(0, 0%, 0%);
+            border-color: hsl(0, 0%, 100%);
+
             &::placeholder {
-                color: hsl(0, 0%, 0%); 
+                color: hsl(0, 0%, 0%);
             }
         }
 
         &:focus {
             background-color: hsl(0, 0%, 100%);
-            color: rgb(0, 0, 0); 
-            border-color: hsl(0, 0%, 100%); 
-            
+            color: rgb(0, 0, 0);
+            border-color: hsl(0, 0%, 100%);
+
 
         }
 
     }
 
-    button{
+    button {
 
         width: 120px;
         height: 45px;
@@ -62,12 +65,12 @@
         display: block;
         overflow: hidden;
         text-transform: uppercase;
-        border: 1px solid ;
+        border: 1px solid;
         border-radius: 5px;
         z-index: 0;
-        
-        &::before{
-            content:'';
+
+        &::before {
+            content: '';
             position: absolute;
             top: 0;
             right: 0;
@@ -77,20 +80,20 @@
             transform: translateX(-100%);
             transition: transform 0.3s ease;
             z-index: -1;
-    
-            
+
+
         }
-        
-        &:hover{
-            
+
+        &:hover {
+
             color: rgb(0, 0, 0);
-    
-            &::before{
+
+            &::before {
                 transform: translateX(0);
             }
-        
+
+        }
     }
-}
 }
 
 .digital-clock {
@@ -98,13 +101,13 @@
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
-  }
+}
 
 
-  .ul-search { 
+.ul-search {
     width: 500px;
     max-height: 115px;
-    overflow-y: auto; 
+    overflow-y: auto;
     background-color: hsl(0, 0%, 100%);
     list-style-type: none;
     padding: 0px;
@@ -112,7 +115,7 @@
     border-radius: 5px;
     color: hsl(0, 0%, 0%);
     font-weight: 700;
-    
+
 
     li {
         padding: 10px;
@@ -128,23 +131,25 @@
 .ul-search.hidden {
     display: none;
 }
-.main-container{
+
+.main-container {
     position: relative;
-    margin:330px auto 0;
+    margin: 330px auto 0;
     display: table;
 }
-.hint-container{
+
+.hint-container {
     position: absolute;
     top: -93px;
     left: 0px;
 }
 
-.selected-stop-message{
+.selected-stop-message {
     font-size: 2rem;
     margin-top: -20px;
 }
 
-.route-id-button{
+.route-id-button {
     background-color: rgb(0, 0, 0);
     font-size: 1.5rem;
     color: hsl(0, 0%, 100%);
@@ -157,11 +162,11 @@
     display: block;
     overflow: hidden;
     text-transform: uppercase;
-    border: 1px solid ;
+    border: 1px solid;
     z-index: 0;
-    
-    &::before{
-        content:'';
+
+    &::before {
+        content: '';
         position: absolute;
         top: 0;
         right: 0;
@@ -172,39 +177,39 @@
         transition: transform 0.3s ease;
         z-index: -1;
 
-        
+
     }
-    
-    &:hover{
-        
+
+    &:hover {
+
         color: rgb(0, 0, 0);
 
-        &::before{
+        &::before {
             transform: translateX(0);
         }
-    
-}
-        
+
+    }
+
 }
 
 .route-button-grid {
-    display: flex;             
+    display: flex;
     flex-wrap: wrap;
-    margin-top: 20px;           
+    margin-top: 20px;
 }
 
 .route-id-button {
-    margin: 5px;               
-    height: 45px;               
+    margin: 5px;
+    height: 45px;
 }
 
-.selected-stop-container{
+.selected-stop-container {
     display: flex;
     justify-content: center;
     margin: 30px auto;
 }
 
-.test{
+.test {
     display: block;
-    
+
 }

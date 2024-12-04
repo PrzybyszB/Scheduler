@@ -7,7 +7,7 @@ import isBrowser from '../isBrowser';
 
 // axios instance
 const apiClient = axios.create({ 
-  baseURL: process.env.BASE_URL, //'http://localhost:8000/api',
+  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
   timeout: 60000,
 });
  

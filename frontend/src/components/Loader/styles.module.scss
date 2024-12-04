@@ -1,0 +1,21 @@
+.p-container{
+    font-size: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 100px;
+}
+
+.loader-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+  }
+  
+  .loader-container img {
+    max-width: 20%;
+    max-height: 20%;
+    border-radius: 100%;
+  }
+  

@@ -1,4 +1,4 @@
-.days-button{
+.days-button {
     background-color: rgb(0, 0, 0);
     font-size: 1rem;
     color: hsl(0, 0%, 100%);
@@ -11,13 +11,13 @@
     display: block;
     overflow: hidden;
     text-transform: uppercase;
-    border: 1px solid ;
+    border: 1px solid;
     z-index: 0;
     margin-top: 20px;
     margin-bottom: 20px;
-    
-    &::before{
-        content:'';
+
+    &::before {
+        content: '';
         position: absolute;
         top: 0;
         right: 0;
@@ -28,23 +28,24 @@
         transition: transform 0.3s ease;
         z-index: -1;
 
-        
+
     }
-    
-    &:hover{
-        
+
+    &:hover {
+
         color: rgb(0, 0, 0);
 
-        &::before{
+        &::before {
             transform: translateX(0);
         }
-    
-}
-        
+
+    }
+
 }
 
 .days-button.active-day {
     color: rgb(0, 0, 0);
+
     &::before {
         transform: translateX(0);
     }
@@ -53,30 +54,31 @@
 .days-ul {
     display: flex;
     justify-content: center;
-    align-items: center ;
-    list-style-type: none; 
+    align-items: center;
+    list-style-type: none;
     padding: 0;
     margin: 10px 0;
 }
 
 .days-li {
-    margin-right: 30px; 
+    margin-right: 30px;
 }
 
 
 .clock-container {
     display: flex;
-    align-items: center; /* Wyrównanie w pionie */
+    align-items: center;
+    /* Wyrównanie w pionie */
     justify-content: center;
 }
 
 .departure-times {
-    display: flex; 
+    display: flex;
     justify-content: center;
-    margin-top: 20px; 
+    margin-top: 20px;
     gap: 100px;
 
-    .column{
+    .column {
         display: flex;
         flex-direction: column;
 
@@ -84,7 +86,7 @@
 
     .time-column {
         font-size: 2rem;
-        text-align: center; 
+        text-align: center;
         margin: 5px 0;
     }
 
@@ -92,7 +94,7 @@
 
 .route-number {
     font-size: 2rem;
-    text-align: center;   
+    text-align: center;
     margin-top: 20px;
     margin-bottom: 40px;
 }

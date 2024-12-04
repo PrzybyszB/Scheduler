@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 const useCurrentDay = (): [string, (day: string) => void] => {
-    
+
   const [selectedDay, setSelectedDay] = useState<string>('');
 
   // Set the current day on load

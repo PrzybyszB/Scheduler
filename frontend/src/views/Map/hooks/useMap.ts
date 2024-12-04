@@ -21,14 +21,14 @@ const useMap = () => {
                     new TileLayer({
                         source: new OSM(),
                     }),
-                
+
                 ],
                 view: new View({
                     // Converting lat long coordinate to EPSG:3857 (Center of Poznań)
                     center: initialCenter,
                     zoom: 13,
                     minZoom: 10,
-                    maxZoom : 18,
+                    maxZoom: 18,
 
                     // Define the extent around initial center
                     extent: [
@@ -55,9 +55,9 @@ const useMap = () => {
                 map.setTarget(undefined);
             };
         }
-        },[]);
+    }, []);
 
-        return mapRef;
+    return mapRef;
 
 };
 
