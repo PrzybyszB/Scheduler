@@ -14,7 +14,7 @@ const BusList = () => {
 
   const handleButtonClick = useHandleButtonClick();
 
-  if (isLoading) return <Loader />;
+  if (isLoading) return <Loader/>;
   if (isError) return <p>Błąd podczas ładowania danych</p>;
   if (!data || data.length === 0) return <p>Nie znaleziono takiego autobusu</p>;
 
