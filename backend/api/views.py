@@ -9,7 +9,7 @@ from rest_framework.response import Response
 # from rest_framework.permissions import IsAuthenticated, AllowAny
 from .serializers import ProfileSerializer, UserSerializer, PremiumSerializer, StopsSerializer
 from .models import Profile, Premium, Stop
-from .services.get_schedule import get_schedule, get_valid_day_of_week
+from .services.get_schedule import get_schedule_from_redis, get_valid_day_of_week
 from .services.premium import delete_premium
 from .services.trip_detail import get_trip_detail
 from .services.tram_list import get_tram_list
@@ -163,7 +163,8 @@ def schedule(request, route_id, stop_id, direction_id):
     current_day_of_week = get_valid_day_of_week(day_of_week)
 
     try:
-        schedule_data = get_schedule(route_id, stop_id, direction_id, current_day_of_week)
+        schedule_data = get_schedule_from_redis(route_id, stop_id, direction_id, current_day_of_week)
+
         if schedule_data:
             return Response(schedule_data, 200)
         else:

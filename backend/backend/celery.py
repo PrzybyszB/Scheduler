@@ -1,8 +1,7 @@
 import os
 from celery import Celery, chain
 from celery.signals import worker_ready
-from api.tasks import check_and_fetch_RT_file, check_and_fetch_static_file, load_agency, load_stops, load_routes, load_shapes, load_calendar, load_feed_info, load_trips, load_stop_times
-from api.tasks import check_and_fetch_static_file_when_site_die
+from api.tasks import check_and_fetch_RT_file, check_and_fetch_static_file, load_agency, load_stops, load_routes, load_shapes, load_calendar, load_feed_info, load_trips, load_stop_times, process_trip_detail, get_active_routes, save_schedules_to_redis
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
@@ -66,6 +65,9 @@ def load_tasks_on_startup(**kwargs):
 
     chain(
         check_and_fetch_static_file.si(URL_STATIC_1, 'gtfs_static'),
+        get_active_routes.si(),
+        process_trip_detail.si(),
+        save_schedules_to_redis.si(),
         load_agency.si(),
         load_stops.si(),
         load_routes.si(),
