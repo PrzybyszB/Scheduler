@@ -160,10 +160,10 @@ def trip_detail(request, route_id):
 def schedule(request, route_id, stop_id, direction_id):
     # Request day parameter
     day_of_week = request.GET.get('day', None)
-    current_day_of_week = get_valid_day_of_week(day_of_week)
+    day = get_valid_day_of_week(day_of_week)
 
     try:
-        schedule_data = get_schedule_from_redis(route_id, stop_id, direction_id, current_day_of_week)
+        schedule_data = get_schedule_from_redis(route_id, stop_id, direction_id, day)
 
         if schedule_data:
             return Response(schedule_data, 200)

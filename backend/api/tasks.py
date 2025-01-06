@@ -12,6 +12,7 @@ import pandas as pd
 import requests
 from datetime import datetime
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 from google.protobuf.message import DecodeError
 from redis.exceptions import RedisError
 from google.transit import gtfs_realtime_pb2
@@ -21,6 +22,7 @@ from io import StringIO
 from .services.trip_detail import fetch_and_save_trip_detail
 from .services.get_schedule import get_schedule_for_day
 from .services.gtfs_processing import GTFSService
+from .services.stop_detail import create_stops_dict
 
 logger = logging.getLogger('api')
 
@@ -154,7 +156,7 @@ def process_trip_detail():
         return {"error": str(e)}
 
 @shared_task
-def get_active_routes():
+def create_active_routes():
     """
     Creating set of active_routes and save it to Redis.
     """
@@ -194,8 +196,32 @@ def save_schedules_to_redis():
     except Exception as e:
         print(f"An error occurred: {e}")
 
+@shared_task
+def create_active_stop_id():
+    """
+    Creating set of active_stops and assign stop_name, then save it to Redis.
+    """
+    try:
+        stops_data = gtfs_services.client.get('stops.txt')
+        if not stops_data:
+            raise ValueError('Lack of stops.txt data in Redis')
         
-#---------------------Load to DB--------------------------------
+        stops_csv = csv.DictReader(io.StringIO(stops_data.decode('utf-8')))
+
+        # Create the stops dictionar
+        stops_dict = create_stops_dict(stops_csv)
+
+        for stop_id, stop_name in stops_dict.items():
+            if not gtfs_services.client.sismember("active:stop_ids", stop_id):
+                gtfs_services.client.sadd("active:stop_ids", stop_id)
+                gtfs_services.client.hset("active:stop_names", stop_id, stop_name)
+                print(f"Added stop_id {stop_id}")
+    
+    except Exception as e:
+        print(f"There was an error: {e}")
+        raise
+
+#---------------------------------------Load to DB-------------------------------------------------
 @shared_task 
 @transaction.atomic
 def load_agency():
@@ -324,6 +350,10 @@ def load_routes():
 @shared_task
 @transaction.atomic
 def load_trips():
+    '''
+    I need to skip the missing objects because they have been missing data (in calendar_dates.txt), multiple times since I started working on this app. I mailed them, and their response was an apology for the inconvenience caused by the missing data.
+    '''
+
     from api.models import Trip, Calendar, Route, Shape, ShapeId
 
     try:
@@ -339,13 +369,17 @@ def load_trips():
         csv_reader = csv.DictReader(csv_file)
         
         for row in csv_reader:
-            
-            # Fetch calendar, route, shape, shapeid by ID
-            service = Calendar.objects.get(service_id=row['service_id'])
-            route = Route.objects.get(route_id=row['route_id'])
-            shape_id = ShapeId.objects.get(shape_id=row['shape_id'])
-            shape = Shape.objects.filter(shape_id=shape_id).first()
+            try:
 
+                # Fetch calendar, route, shape, shapeid by ID
+                service = Calendar.objects.get(service_id=row['service_id'])
+                route = Route.objects.get(route_id=row['route_id'])
+                shape_id = ShapeId.objects.get(shape_id=row['shape_id'])
+                shape = Shape.objects.filter(shape_id=shape_id).first()
+            
+            # Skipping row due to missing related object
+            except ObjectDoesNotExist as e:
+                continue
             
             Trip.objects.create(
                     route_id=route,
@@ -366,6 +400,11 @@ def load_trips():
 @shared_task
 @transaction.atomic
 def load_stop_times():
+
+    '''
+    Due to missing data in calendar_dates.txt, I have to skip data in load_trips and then i load_stop_times
+    '''
+
     from api.models import StopTime, Trip, Stop
 
     try:
@@ -381,11 +420,15 @@ def load_stop_times():
         csv_reader = csv.DictReader(csv_file)
 
         for row in csv_reader:
+            try:
+                trip = Trip.objects.get(trip_id=row['trip_id'])
+                arrival_time = gtfs_services.convert_time_format(row['arrival_time'])
+                departure_time = gtfs_services.convert_time_format(row['departure_time'])
+                stop = Stop.objects.get(stop_id=row['stop_id'])
 
-            trip = Trip.objects.get(trip_id=row['trip_id'])
-            arrival_time = gtfs_services.convert_time_format(row['arrival_time'])
-            departure_time = gtfs_services.convert_time_format(row['departure_time'])
-            stop = Stop.objects.get(stop_id=row['stop_id'])
+            # Skipping row due to missing related object
+            except ObjectDoesNotExist as e:
+                continue
 
             StopTime.objects.create(
                 trip_id=trip,

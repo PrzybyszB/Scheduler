@@ -54,8 +54,7 @@ class GTFSService:
             return fetch_data
         except (ConnectionError, TimeoutError) as e:
             raise Exception(f"Error retrieving data from Redis: {e}")
-        
-    
+         
     def parse_csv_data(self, data):
         '''
         Parse CSV data into Dict Reader objects
@@ -65,7 +64,6 @@ class GTFSService:
         for key, value in data.items():
             csv_data[key] = csv.DictReader(StringIO(value))
         return csv_data
-
 
     def load_gtfs_feed_from_redis(self,filename):
         '''
@@ -120,6 +118,27 @@ class GTFSService:
         except Exception as e:
            return {'error': f'Error loading active route_ids from Redis: {e}'}
     
+    def get_active_stop_ids(self):
+        '''
+        Fetch all active stop_ids from Redis set 'active:stop_ids'
+        '''
+        try:
+            return self.client.smembers("active:stop_ids")
+        except Exception as e:
+            return {'error': f'Error loading active stop_ids from Redis: {e}'}
+        
+    def get_active_stop_names(self, stop_id):
+        '''
+        Fetch the name of a stop based on its stop_id from the Redis hash 'active:stop_names'
+        '''
+        try:
+            stop_name = self.client.hget("active:stop_names", stop_id)
+            if stop_name:
+                return stop_name.decode('utf-8')
+            else:
+                return {'error': f'Stop_id {stop_id} not found in Redis'}
+        except Exception as e:
+            return {'error': f'Error fetching stop_name from Redis: {e}'}
 
     def convert_time_format(self, time_str):
         """
@@ -167,6 +186,10 @@ class GTFSService:
                     print(f'File {file_name} stored')
 
     def fetch_and_convert_pb_to_json(self, url, key):
+        '''
+        Fetching and converting protobuff files to json and saving to redis
+        '''
+
         try:
             response = requests.get(url)
             response.raise_for_status()

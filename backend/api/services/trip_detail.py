@@ -13,10 +13,12 @@ def process_trips(trips_csv, route_id):
     for trips in trips_csv:
         trips_route_id = trips['route_id']
         direction_id = trips['direction_id']
+        trip_headsign = trips['trip_headsign']
         if trips_route_id == route_id:
             trip_id = trips['trip_id']
             routes[trip_id] ={
                 'direction_id': direction_id,
+                'trip_headsign': trip_headsign,
                 'stops_detail': []
             }
     return routes
@@ -47,7 +49,7 @@ def create_stops_dict(stops_csv):
 
 def map_stop_names_to_routes(routes, stops_dict):
     '''
-    Map stop names to routes
+    Map stop names to routes and assigne trip_headsign
     '''
     for trip_id, trip_info in routes.items():
         stop_names = []
@@ -61,6 +63,9 @@ def map_stop_names_to_routes(routes, stops_dict):
                 })
         routes[trip_id]['stops_detail'] = stop_names
 
+        trip_headsign = trip_info['trip_headsign']
+        routes[trip_id]['trip_headsign'] = trip_headsign
+
 def identify_popular_patterns(routes):
     '''
     Identify the most popular patterns for each direction_id.
@@ -71,6 +76,7 @@ def identify_popular_patterns(routes):
             
         # Getting the direction_id from the routes
         direction_id = trip_data['direction_id']
+        trip_headsign = trip_data['trip_headsign']
             
         # Making a list with stops name 
         stop_ids = []
@@ -83,6 +89,7 @@ def identify_popular_patterns(routes):
         if sequence not in sequences:
             sequences[sequence] = {
                 'direction_id': direction_id,  # Ensure this key exists
+                'trip_headsign': trip_headsign,
                 'trip_ids': [],
                 'stops': stop_names,
             }
@@ -91,6 +98,7 @@ def identify_popular_patterns(routes):
     patterns = {}
     for sequence, data in sequences.items():
         direction_id = data['direction_id']
+        trip_headsign = data['trip_headsign']
         count = len(data['trip_ids'])
 
         # Add patterns that get more than 2 repeats
@@ -98,6 +106,7 @@ def identify_popular_patterns(routes):
             if direction_id not in patterns:
                 patterns[direction_id] = {
                     'stops': data['stops'],
+                    'trip_headsign': trip_headsign,
                     'count': count
                 }
             else:
@@ -105,6 +114,7 @@ def identify_popular_patterns(routes):
                 if count > patterns[direction_id]['count']:
                     patterns[direction_id] = {
                         'stops': data['stops'],
+                        'trip_headsign': trip_headsign,
                         'count': count
                     }
     return patterns
@@ -134,7 +144,9 @@ def fetch_and_save_trip_detail(route_id):
     for direction_id, pattern in patterns.items():
         response_data["most_popular_patterns"][direction_id] = {
             'stops': pattern['stops'],
+            'trip_headsign': pattern['trip_headsign'],
         }
+
 
     redis_key = f"route:{route_id}"
 

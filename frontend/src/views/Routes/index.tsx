@@ -29,7 +29,8 @@ const RouteDetail = () => {
                             <h2>
                                 <br />
                                 <br />
-                                {'->'} {item.stops[item.stops.length - 1]?.stop_name}
+                                {'->'} {item.trip_headsign}
+                                {/* {'->'} {item.stops[item.stops.length - 1]?.stop_name} */}
                             </h2>
                             <br />
                             <ul className={styles['stops']}>

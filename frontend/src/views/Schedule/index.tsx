@@ -38,15 +38,15 @@ const ScheduleDetail = () => {
         return <p>Nie znaleziono takiego rozkładu jazdy</p>;
     }
 
-    const sixth = Math.ceil(data.schedules.length / 6);
-    const firstColumn = data.schedules.slice(0, sixth);
-    const secondColumn = data.schedules.slice(sixth, sixth * 2);
-    const thirdColumn = data.schedules.slice(sixth * 2, sixth * 3);
-    const fourthColumn = data.schedules.slice(sixth * 3, sixth * 4);
-    const fifthColumn = data.schedules.slice(sixth * 4, sixth * 5);
-    const sixthColumn = data.schedules.slice(sixth * 5);
+    const sixth = Math.ceil(data.schedule.length / 6);
+    const firstColumn = data.schedule.slice(0, sixth);
+    const secondColumn = data.schedule.slice(sixth, sixth * 2);
+    const thirdColumn = data.schedule.slice(sixth * 2, sixth * 3);
+    const fourthColumn = data.schedule.slice(sixth * 3, sixth * 4);
+    const fifthColumn = data.schedule.slice(sixth * 4, sixth * 5);
+    const sixthColumn = data.schedule.slice(sixth * 5);
 
-    console.log(data.schedules)
+    console.log(data.schedule)
 
     return (
         <>
@@ -73,49 +73,49 @@ const ScheduleDetail = () => {
             </div>
 
             <div className={styles['departure-times']}>
-                {data.schedules.length === 0 ? (
+                {data.schedule.length === 0 ? (
                     <p className={styles['no-schedule-message']}> Nie ma rozkładu na dany dzień.</p>
                 ) : (
                     <>
                         <div className={styles['column']}>
-                            {firstColumn.map((schedule) => (
-                                <div key={schedule.route_id} className={styles['time-column']}>
-                                    <p> {schedule.departure_time}</p>
+                            {firstColumn.map((time, index) => (
+                                <div key={index} className={styles['time-column']}>
+                                    <p> {time}</p>
                                 </div>
                             ))}
                         </div>
                         <div className={styles['column']}>
-                            {secondColumn.map((schedule) => (
-                                <div key={schedule.route_id} className={styles['time-column']}>
-                                    <p> {schedule.departure_time}</p>
+                            {secondColumn.map((time, index) => (
+                                <div key={index} className={styles['time-column']}>
+                                    <p> {time}</p>
                                 </div>
                             ))}
                         </div>
                         <div className={styles['column']}>
-                            {thirdColumn.map((schedule) => (
-                                <div key={schedule.route_id} className={styles['time-column']}>
-                                    <p> {schedule.departure_time}</p>
+                            {thirdColumn.map((time, index) => (
+                                <div key={index} className={styles['time-column']}>
+                                    <p> {time}</p>
                                 </div>
                             ))}
                         </div>
                         <div className={styles['column']}>
-                            {fourthColumn.map((schedule) => (
-                                <div key={schedule.route_id} className={styles['time-column']}>
-                                    <p> {schedule.departure_time}</p>
+                            {fourthColumn.map((time, index) => (
+                                <div key={index} className={styles['time-column']}>
+                                    <p> {time}</p>
                                 </div>
                             ))}
                         </div>
                         <div className={styles['column']}>
-                            {fifthColumn.map((schedule) => (
-                                <div key={schedule.route_id} className={styles['time-column']}>
-                                    <p> {schedule.departure_time}</p>
+                            {fifthColumn.map((time, index) => (
+                                <div key={index} className={styles['time-column']}>
+                                    <p> {time}</p>
                                 </div>
                             ))}
                         </div>
                         <div className={styles['column']}>
-                            {sixthColumn.map((schedule) => (
-                                <div key={schedule.route_id} className={styles['time-column']}>
-                                    <p> {schedule.departure_time}</p>
+                            {sixthColumn.map((time, index) => (
+                                <div key={index} className={styles['time-column']}>
+                                    <p> {time}</p>
                                 </div>
                             ))}
                         </div>

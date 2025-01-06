@@ -6,6 +6,7 @@ export type ResponseRouteData = {
                 stop_name: string;
                 stop_id: string;
             }[];
+            trip_headsign: string;
         };
     };
 };

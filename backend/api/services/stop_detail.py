@@ -42,3 +42,14 @@ def get_stop_detail(request_get, queryset):
             }
 
     return {'message': 'No valid GTFS files found.'}
+
+def create_stops_dict(stops_csv):
+    """
+    Create a dict mapping stop_id to stop_name.
+    """
+    stops_dict = {}
+    for stops in stops_csv:
+        stop_id = stops['stop_id']
+        stop_name = stops['stop_name']
+        stops_dict[stop_id] = stop_name
+    return stops_dict
