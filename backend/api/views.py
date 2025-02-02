@@ -14,7 +14,7 @@ from .services.premium import delete_premium
 from .services.trip_detail import get_trip_detail
 from .services.tram_list import get_tram_list
 from .services.bus_list import get_bus_list
-from .services.stop_detail import get_stop_detail
+from .services.stop_detail import get_route_ids_for_stop_search
 from api.filters import StopFilter
 
 
@@ -104,11 +104,12 @@ def stop_detail(request):
     serializer = StopsSerializer(filtered_queryset, many=True)
     try:
 
-        response_data = get_stop_detail(request.GET, filtered_queryset) 
+        routes_response = get_route_ids_for_stop_search(request.GET)
+        logging.info(routes_response)
 
         response = {
             'stops_data': serializer.data,
-            'routes': response_data.get('routes', []),
+            'routes': routes_response.get('routes', []),
         }
 
         return Response(response)

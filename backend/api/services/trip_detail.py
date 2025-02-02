@@ -1,5 +1,6 @@
 import json
 from .gtfs_processing import GTFSService
+from .stop_detail import create_stops_dict
 
 gtfs_service = GTFSService()
 
@@ -7,7 +8,6 @@ def process_trips(trips_csv, route_id):
     '''
     Process trips to filter by route_id and generate a dict of routes
     '''
-
     routes = {}
     # Itereting data from trips.txt to get trip_id
     for trips in trips_csv:
@@ -36,27 +36,16 @@ def process_stop_times(stop_times_csv, routes):
             })       
     return routes
 
-def create_stops_dict(stops_csv):
-    """
-    Create a dict mapping stop_id to stop_name.
-    """
-    stops_dict = {}
-    for stops in stops_csv:
-        stop_id = stops['stop_id']
-        stop_name = stops['stop_name']
-        stops_dict[stop_id] = stop_name
-    return stops_dict
-
 def map_stop_names_to_routes(routes, stops_dict):
     '''
-    Map stop names to routes and assigne trip_headsign
+    Map stop names to routes and assign trip_headsign
     '''
     for trip_id, trip_info in routes.items():
         stop_names = []
         for detail in trip_info['stops_detail']:
             stop_id = detail['stop_id']
             if stop_id in stops_dict: 
-                stop_name = stops_dict[stop_id]
+                stop_name = stops_dict[stop_id]['stop_name']
                 stop_names.append({
                     'stop_name': stop_name,
                     'stop_id': stop_id
@@ -126,11 +115,12 @@ def fetch_and_save_trip_detail(route_id):
     # Get data from Redis
     keys = ['stop_times.txt', 'trips.txt', 'stops.txt']
     raw_data = gtfs_service.fetch_data_from_redis(keys)
-
+    
     # Parse data to CSV
     csv_data = gtfs_service.parse_csv_data(raw_data)
 
     routes = process_trips(csv_data['trips.txt'], route_id)
+
     process_stop_times(csv_data['stop_times.txt'], routes)
     stops_dict = create_stops_dict(csv_data['stops.txt'])
     map_stop_names_to_routes(routes, stops_dict)
@@ -161,6 +151,7 @@ def get_trip_detail(route_id):
     '''
     Retrieve trip details for a specific route_id from Redis.
     '''
+
     redis_key = f"route:{route_id}"
     try:
         route_data = gtfs_service.client.hget(redis_key, 'data')

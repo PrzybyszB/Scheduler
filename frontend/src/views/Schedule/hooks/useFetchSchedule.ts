@@ -6,7 +6,7 @@ const fetchScheduleData = async (route_id: string, stop_id: string, direction_id
     const response = await apiClient.get(`/route/${route_id}/stop/${stop_id}/direction/${direction_id}`, {
         params: { day }
     });
-
+    console.log('Fetched schedule data:', response.data);
     return response.data;
 };
 

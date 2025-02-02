@@ -3,4 +3,6 @@ export type ResponseScheduleData = {
     schedule: string[]; 
     stop_name: string; 
     stop_headsign: string; 
+    start_date: string; 
+    end_date: string; 
 };

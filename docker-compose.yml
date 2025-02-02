@@ -35,13 +35,28 @@ services:
       - 6379:6379
     command: redis-server --bind 0.0.0.0
 
-  celery:
+  celery_worker:
     image: backend
-    container_name: celery
+    container_name: celery_worker
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: bash -c "celery -A backend worker --loglevel=info & celery -A backend beat --loglevel=info"
+    command: bash -c "celery -A backend worker --loglevel=info"
+    volumes:
+      - ./backend:/code
+    environment:
+      - DJANGO_SETTINGS_MODULE=backend.settings
+    depends_on:
+      - scheduler_db
+      - redis
+    
+  celery_beat:
+    image: backend
+    container_name: celery_beat
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A backend beat --loglevel=info
     volumes:
       - ./backend:/code
     environment:
@@ -74,3 +89,84 @@ services:
 
 volumes:
   postgres-scheduler-volume:
+
+
+
+
+
+# version: '3.3'
+
+# services:
+#   scheduler_db:
+#     image: postgres:17
+#     container_name: scheduler_db
+#     environment:
+#       - POSTGRES_DB=scheduler_db
+#       - POSTGRES_USER=scheduler_user
+#       - POSTGRES_PASSWORD=scheduler_password
+#     ports:
+#       - 5432:5432
+#     volumes:
+#       - postgres-scheduler-volume:/var/lib/postgresql/data
+
+#   backend:
+#     image: backend
+#     container_name: backend
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#     command: bash -c "/backend/api/scripts/run.sh"
+#     volumes:
+#       - ./backend:/backend
+#     ports:
+#       - 8000:8000
+#     depends_on:
+#       - scheduler_db
+#       - redis
+
+#   redis:
+#     image: redis:latest #5.0.4
+#     container_name: redis
+#     ports:
+#       - 6379:6379
+#     command: redis-server --bind 0.0.0.0
+
+#   celery:
+#     image: backend
+#     container_name: celery
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#     command: bash -c "celery -A backend worker --loglevel=info & celery -A backend beat --loglevel=info"
+#     volumes:
+#       - ./backend:/code
+#     environment:
+#       - DJANGO_SETTINGS_MODULE=backend.settings
+#     depends_on:
+#       - scheduler_db
+#       - redis
+
+#   frontend:
+#     image: frontend
+#     container_name: frontend
+#     build:
+#       context: ./frontend
+#       dockerfile: Dockerfile  
+#     ports:
+#       - 3000:3000
+#     depends_on:
+#       - backend
+
+#   nginx:
+#     image: nginx:latest
+#     container_name: nginx
+#     ports:
+#       - "80:80" 
+#     volumes:
+#       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+#     depends_on:
+#       - backend
+#       - frontend
+
+# volumes:
+#   postgres-scheduler-volume:

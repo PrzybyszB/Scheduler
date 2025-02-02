@@ -1,10 +1,7 @@
 import requests
-import redis
 import json
-import zipfile
 import io
 import os
-import re
 import hashlib
 import csv
 import logging
@@ -16,13 +13,11 @@ from django.core.exceptions import ObjectDoesNotExist
 from google.protobuf.message import DecodeError
 from redis.exceptions import RedisError
 from google.transit import gtfs_realtime_pb2
-from google.protobuf.json_format import MessageToJson
 from celery import shared_task
-from io import StringIO
 from .services.trip_detail import fetch_and_save_trip_detail
 from .services.get_schedule import get_schedule_for_day
 from .services.gtfs_processing import GTFSService
-from .services.stop_detail import create_stops_dict
+from .services.stop_detail import get_route_ids_on_stop_for_redis, create_stops_dict
 
 logger = logging.getLogger('api')
 
@@ -109,12 +104,13 @@ def check_and_fetch_static_file(url, zip_name):
 
 
         if not stored_file_hash:  
+
             # Store the file name, hash for zip and data inside
             gtfs_services.process_file(response.content, zip_name)
             gtfs_services.client.setex(zip_name, ttl_in_seconds, response.content)
             gtfs_services.client.setex(f"{zip_name}:hash", ttl_in_seconds, new_file_hash)
             print(f"Downloaded file {zip_name} and set new hash {new_file_hash}")
-            return  
+            return True
 
         print(f"Stored file hash is {stored_file_hash.decode('utf-8')}")
 
@@ -123,8 +119,11 @@ def check_and_fetch_static_file(url, zip_name):
             gtfs_services.client.setex(zip_name, ttl_in_seconds, response.content)
             gtfs_services.client.setex(f"{zip_name}:hash", ttl_in_seconds, new_file_hash)
             print(f"Downloaded and updated file {zip_name}")
+            return True
+
         else:
             print(f"Static ZIP file {zip_name} is already up-to-date.")
+            return False
 
     except requests.exceptions.RequestException as e:
         print(f"Error while downloading file from URL: {e}")
@@ -161,6 +160,10 @@ def create_active_routes():
     Creating set of active_routes and save it to Redis.
     """
     try:
+        if gtfs_services.client.exists("active:route_ids"):
+            gtfs_services.client.delete("active:route_ids")
+            print("Deleted existing active:route_ids set.")
+
         trips_data = gtfs_services.client.get('trips.txt')
         if not trips_data:
             raise ValueError('Lack of trips.txt data in Redis')
@@ -180,28 +183,15 @@ def create_active_routes():
         raise
 
 @shared_task
-def save_schedules_to_redis():
-    """
-    Saving schedules by day to redis
-    """
-    try:
-        # Process schedule
-        schedules_by_day = get_schedule_for_day()
-
-        # Save to Redis
-        for day, schedule_json in schedules_by_day.items():
-            gtfs_services.client.set(f"full_schedule_{day}", schedule_json)
-            print(f"Saved full_schedule_{day} to Redis")
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-@shared_task
 def create_active_stop_id():
     """
-    Creating set of active_stops and assign stop_name, then save it to Redis.
+    Creating set of active_stops and assign stop details, then save it to Redis.
     """
     try:
+        if gtfs_services.client.exists("active:stop_ids"):
+            gtfs_services.client.delete("active:stop_ids")
+            print("Deleted existing active:stop_ids set.")
+
         stops_data = gtfs_services.client.get('stops.txt')
         if not stops_data:
             raise ValueError('Lack of stops.txt data in Redis')
@@ -211,15 +201,45 @@ def create_active_stop_id():
         # Create the stops dictionar
         stops_dict = create_stops_dict(stops_csv)
 
-        for stop_id, stop_name in stops_dict.items():
+        for stop_id, stop_details in stops_dict.items():
+            
             if not gtfs_services.client.sismember("active:stop_ids", stop_id):
                 gtfs_services.client.sadd("active:stop_ids", stop_id)
-                gtfs_services.client.hset("active:stop_names", stop_id, stop_name)
-                print(f"Added stop_id {stop_id}")
-    
+                redis_key = f"stop_details:{stop_id}"
+                gtfs_services.client.hset(redis_key, mapping=stop_details)
+
+                print(f"Added stop_id {stop_id} with details")
+            
+            try:
+                # Extracting the route_ids of circulating buses for a stop 
+                route_data = get_route_ids_on_stop_for_redis(stop_id)
+
+                # Saving routes in redis
+                route_redis_key = f"routes_for_stop:{stop_id}"
+                gtfs_services.client.set(route_redis_key, json.dumps(route_data))
+
+                print(f"Saved routes for stop_id {stop_id}")
+
+            except Exception as e:
+                print(f"Error processing routes for stop_id {stop_id}: {e}")
+
     except Exception as e:
         print(f"There was an error: {e}")
         raise
+
+@shared_task
+def save_schedules_to_redis():
+    """
+    Saving schedules by day to redis
+    """
+    try:
+        # Process schedule
+        get_schedule_for_day()
+
+        print(f"Fetched schedules by day done")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 #---------------------------------------Load to DB-------------------------------------------------
 @shared_task 
@@ -422,8 +442,8 @@ def load_stop_times():
         for row in csv_reader:
             try:
                 trip = Trip.objects.get(trip_id=row['trip_id'])
-                arrival_time = gtfs_services.convert_time_format(row['arrival_time'])
-                departure_time = gtfs_services.convert_time_format(row['departure_time'])
+                arrival_time = gtfs_services.convert_time(row['arrival_time'])
+                departure_time = gtfs_services.convert_time(row['departure_time'])
                 stop = Stop.objects.get(stop_id=row['stop_id'])
 
             # Skipping row due to missing related object

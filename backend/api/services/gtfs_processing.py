@@ -6,6 +6,7 @@ import csv
 import re
 import zipfile
 import io
+import json
 import requests
 from datetime import datetime
 from io import StringIO
@@ -34,7 +35,7 @@ class GTFSService:
             for key in all_keys:
                 decoded_key = key.decode('utf-8')
                 
-                if not decoded_key.endswith(':hash'):
+                if decoded_key.endswith('.zip'):
                     gtfs_keys.append(decoded_key)
 
             return gtfs_keys
@@ -54,20 +55,19 @@ class GTFSService:
             return fetch_data
         except (ConnectionError, TimeoutError) as e:
             raise Exception(f"Error retrieving data from Redis: {e}")
-         
+                
     def parse_csv_data(self, data):
         '''
         Parse CSV data into Dict Reader objects
         '''
         csv_data = {}
-
         for key, value in data.items():
             csv_data[key] = csv.DictReader(StringIO(value))
         return csv_data
 
-    def load_gtfs_feed_from_redis(self,filename):
+    def load_gtfs_feed_from_redis(self, filename):
         '''
-        Use a temporary file to handle the GTFS data using gtfskit
+        Use a temporary file to handle the GTFS data using gtfskit, and use reduce memory usage for feeds
         '''
 
         try:
@@ -83,6 +83,7 @@ class GTFSService:
 
                     # Load GTFS data from the temporary file
                     feed = gk.feed.read_feed(path_or_url=temp_file_path, dist_units='km')
+
                     return feed
                 except Exception as e:
                     return {'error': f'Error loading GTFS feed from {temp_file_path}: {e}'}
@@ -93,7 +94,7 @@ class GTFSService:
             else:
                 return {'error': f'File {filename} not found in Redis.'}
         except Exception as e:
-            return {'error': f'Error loading GTFS feed from Redis: {e}'}
+            return {'error': f'Error loading GTFS feed from Redis: {e}'} 
 
     def extract_date_from_filename(self, filename):
         '''
@@ -117,7 +118,7 @@ class GTFSService:
             return self.client.smembers("active:route_ids")
         except Exception as e:
            return {'error': f'Error loading active route_ids from Redis: {e}'}
-    
+        
     def get_active_stop_ids(self):
         '''
         Fetch all active stop_ids from Redis set 'active:stop_ids'
@@ -125,29 +126,69 @@ class GTFSService:
         try:
             return self.client.smembers("active:stop_ids")
         except Exception as e:
-            return {'error': f'Error loading active stop_ids from Redis: {e}'}
-        
+           return {'error': f'Error loading active stop_ids from Redis: {e}'}
+
     def get_active_stop_names(self, stop_id):
         '''
-        Fetch the name of a stop based on its stop_id from the Redis hash 'active:stop_names'
+        Fetch the name of a stop based on its stop_id from the Redis hash 'stop_details'
         '''
         try:
-            stop_name = self.client.hget("active:stop_names", stop_id)
+            stop_name = self.client.hget(f"stop_details:{stop_id}", "stop_name")
             if stop_name:
                 return stop_name.decode('utf-8')
             else:
                 return {'error': f'Stop_id {stop_id} not found in Redis'}
         except Exception as e:
             return {'error': f'Error fetching stop_name from Redis: {e}'}
+        
+    def get_route_ids_for_stop_schedule(self, stop_id):
+        '''
+        Fetch route_ids that stop on each stop_id
+        '''
+        try:
+            if not stop_id:
+                return [] 
 
-    def convert_time_format(self, time_str):
+            redis_key = f"routes_for_stop:{stop_id}"
+            routes = self.client.get(redis_key)
+
+            if not routes:
+                raise ValueError(f"No data found for stop_id {stop_id} in Redis")
+
+            decoded_routes = routes.decode('utf-8')
+            routes_json = json.loads(decoded_routes)
+
+            
+            route_ids = []
+            for route in routes_json.get('routes', []):
+                route_ids.append(route['route_id'])
+            
+            return route_ids
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return []
+
+    def convert_time(self, time_str):
         """
-        Converts time strings in 'HH:MM:SS' format where HH can be >= 24 to a valid time.
+        Night routes have time 24:00, 25:00, 26:00, 27:00, 28:00. Converts time strings where HH can be >= 24 to a valid time format.
+        Supports both 'HH:MM' and 'HH:MM:SS' formats. 
         """
-        hours, minutes, seconds = map(int, time_str.split(':'))
-        if hours >= 24:
-            hours -= 24
-        return f'{hours:02}:{minutes:02}:{seconds:02}'
+        try:
+            parts = time_str.split(":")
+            hours = int(parts[0])
+
+            if hours >= 24:
+                hours -= 24
+
+            if len(parts) == 2:
+                return f"{hours:02}:{parts[1]}"
+            elif len(parts) == 3:
+                return f"{hours:02}:{parts[1]}:{parts[2]}"
+            else:
+                raise ValueError("Invalid time format")
+
+        except Exception as e:
+            raise ValueError(f"Error converting time '{time_str}': {e}")
     
     def get_filename_from_content_disposition(self, content_dispositon):
         '''
